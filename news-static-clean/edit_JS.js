@@ -21,7 +21,7 @@ if (user) {
 const id = parseInt(new URLSearchParams(location.search).get('id'));
 // 从后端 API 加载新闻数据
 (async () => {
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id);
   const news = res.ok ? await res.json() : null;
   if (!news) { window.location.href = 'dashboard.html'; return; }
   document.getElementById('title').value = news.title;
@@ -39,7 +39,7 @@ async function handleEdit(e) {
   }
   // 调用后端 API 更新新闻
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (user ? user.token : '') },
     body: JSON.stringify({ title: title, content: content })

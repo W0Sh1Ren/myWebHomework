@@ -1076,7 +1076,7 @@ async function handleSave(e) {
   /**
    * 不再保存到 localStorage 的 users 数组，改为通过后端 API 更新
    *
-   * API 地址：https://nanhu-news-api.workers.dev/api/users/ + user.id
+   * API 地址：https://mynewswork.3454381311.workers.dev/api/users/ + user.id
    * HTTP 方法：PUT（更新服务器上的现有资源）
    *
    * 请求头：
@@ -1093,7 +1093,7 @@ async function handleSave(e) {
    */
   const currentUser = JSON.parse(localStorage.getItem('currentUser'));
   try {
-    const res = await fetch('https://nanhu-news-api.workers.dev/api/users/' + currentUser.id, {
+    const res = await fetch('https://mynewswork.3454381311.workers.dev/api/users/' + currentUser.id, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

@@ -16,7 +16,7 @@ const id = parseInt(new URLSearchParams(location.search).get('id'));
 const el = document.getElementById('newsDetail');
 
 (async () => {
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id);
   const news = res.ok ? await res.json() : null;
 
   if (!news) {

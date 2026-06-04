@@ -19,7 +19,7 @@ function logout() {
 }
 
 async function getNews() {
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news');
   return res.ok ? await res.json() : [];
 }
 

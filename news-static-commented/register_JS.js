@@ -268,7 +268,7 @@ async function handleRegister(e) {
      * 它返回一个 Promise（承诺）对象，表示"将来会有的结果"。
      * 
      * 第一个参数：请求的 URL
-     *   这里指向注册 API：https://nanhu-news-api.workers.dev/api/register
+     *   这里指向注册 API：https://mynewswork.3454381311.workers.dev/api/register
      * 
      * 第二个参数：请求配置对象
      *   - method: 'POST'           → HTTP 方法，POST 表示"提交/创建"数据
@@ -285,7 +285,7 @@ async function handleRegister(e) {
      * 
      * res 变量：服务器返回的响应（Response）对象
      */
-    const res = await fetch('https://nanhu-news-api.workers.dev/api/register', {
+    const res = await fetch('https://mynewswork.3454381311.workers.dev/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })

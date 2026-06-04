@@ -141,7 +141,7 @@ const id = parseInt(new URLSearchParams(location.search).get('id'));
 /**
  * 通过 async IIFE（立即执行的异步函数表达式）从后端 API 加载新闻数据
  * 
- * API 地址：https://nanhu-news-api.workers.dev/api/news/ + id
+ * API 地址：https://mynewswork.3454381311.workers.dev/api/news/ + id
  * HTTP 方法：GET（从服务器获取资源）
  * 
  * 不再从 localStorage 读取新闻列表，而是由后端 API 返回指定 ID 的新闻对象
@@ -149,7 +149,7 @@ const id = parseInt(new URLSearchParams(location.search).get('id'));
  * 如果失败或找不到，跳转到后台管理页面
  */
 (async () => {
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id);
   const news = res.ok ? await res.json() : null;
 
   /**
@@ -232,7 +232,7 @@ async function handleEdit(e) {
    *
    * 不再将修改保存到 localStorage，改为通过 HTTP PUT 请求提交给后端 API
    *
-   * API 地址：https://nanhu-news-api.workers.dev/api/news/ + id
+   * API 地址：https://mynewswork.3454381311.workers.dev/api/news/ + id
    * HTTP 方法：PUT（更新服务器上的现有资源）
    *
    * 请求头：
@@ -245,7 +245,7 @@ async function handleEdit(e) {
    * 如果失败，从响应 JSON 中获取 error 信息并弹窗提示
    */
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

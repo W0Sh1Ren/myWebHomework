@@ -884,7 +884,7 @@ async function handleCreate(e) {
    * 不再将新闻保存到 localStorage，而是通过后端 API 提交
    * 
    * 从 localStorage 中读取当前登录用户的信息（包含 token 用于身份验证）
-   * API 地址：https://nanhu-news-api.workers.dev/api/news
+   * API 地址：https://mynewswork.3454381311.workers.dev/api/news
    * HTTP 方法：POST（向服务器提交新资源）
    * 请求头：
    *   Content-Type: application/json  —— 告诉服务器请求体是 JSON 格式
@@ -895,7 +895,7 @@ async function handleCreate(e) {
    * 如果失败，从响应 JSON 中获取 error 信息并弹窗提示
    */
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news', {
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

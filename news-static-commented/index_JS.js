@@ -176,7 +176,7 @@ function logout() {
 async function getNews() {
   /**
    * 改为从后端 API 获取新闻数据
-   *   fetch('https://nanhu-news-api.workers.dev/api/news')
+   *   fetch('https://mynewswork.3454381311.workers.dev/api/news')
    *   发送 GET 请求获取所有新闻列表
    *   res.ok 检查响应状态是否正常（200-299）
    *   res.json() 将响应体解析为 JSON 数组
@@ -184,7 +184,7 @@ async function getNews() {
    * 一句话：从后端 API 拿到新闻数据，转成数组返回。
    * 如果没有数据或请求失败，就返回一个空数组 []。
    */
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news');
   return res.ok ? await res.json() : [];
 } /* —— getNews 函数结束 —— */
 

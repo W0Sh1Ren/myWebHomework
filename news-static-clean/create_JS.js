@@ -131,7 +131,7 @@ async function handleCreate(e) {
   }
   // 调用后端 API 发布新闻
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news', {
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (user ? user.token : '') },
     body: JSON.stringify({ title: title, content: content })

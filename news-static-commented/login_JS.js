@@ -169,7 +169,7 @@ async function handleLogin(e) {
      * 存储服务器返回的响应对象
      * 类型：Response（响应对象）
      */
-    const res = await fetch('https://nanhu-news-api.workers.dev/api/login', {
+    const res = await fetch('https://mynewswork.3454381311.workers.dev/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })

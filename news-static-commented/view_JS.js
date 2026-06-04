@@ -158,7 +158,7 @@ const id = parseInt(new URLSearchParams(location.search).get('id'));
  * 从后端 API 获取新闻数据
  *
  * 详细拆解：
- *   1. fetch('https://nanhu-news-api.workers.dev/api/news/' + id)
+ *   1. fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id)
  *      发送 GET 请求获取指定 ID 的新闻
  *   2. res.ok —— 检查响应状态是否正常（状态码 200-299）
  *   3. res.json() —— 将响应体从 JSON 格式解析为 JavaScript 对象
@@ -176,7 +176,7 @@ const el = document.getElementById('newsDetail');
 // 使用 IIFE（立即执行函数表达式）来支持 async/await
 // 因为顶级作用域不能直接使用 await
 (async () => {
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id);
   const news = res.ok ? await res.json() : null;
 
   /*

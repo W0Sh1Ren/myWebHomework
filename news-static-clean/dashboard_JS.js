@@ -20,7 +20,7 @@ async function render() {
   const user = checkAuth();
   if (!user) return;
   loadNav();
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news');
   const allNews = (res.ok ? await res.json() : []).filter(n => n.authorId === user.id).sort((a, b) => b.createdAt - a.createdAt);
   const el = document.getElementById('dashboardContent');
   if (allNews.length === 0) {
@@ -39,7 +39,7 @@ async function render() {
 async function delNews(id) {
   if (!confirm('确定要删除这篇新闻吗？')) return;
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id, {
     method: 'DELETE',
     headers: { 'Authorization': 'Bearer ' + (user ? user.token : '') }
   });

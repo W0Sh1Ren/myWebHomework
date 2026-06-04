@@ -274,7 +274,7 @@ async function render() {
    *   每个方法处理完后返回一个新值，下一个方法接着处理。
    * 
    * 【详细分解】：
-   *   ① fetch('https://nanhu-news-api.workers.dev/api/news')
+   *   ① fetch('https://mynewswork.3454381311.workers.dev/api/news')
    *      发送 GET 请求从后端 API 获取所有新闻数据
    *   ② res.ok ? await res.json() : []
    *      如果响应正常，解析 JSON 为数组；否则返回空数组
@@ -285,7 +285,7 @@ async function render() {
    *      按 createdAt（创建时间，单位：毫秒时间戳）倒序排列
    *      最新的新闻排在最前面
    */
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news');
   const allNews = (res.ok ? await res.json() : [])
     .filter(n => n.authorId === user.id)
     .sort((a, b) => b.createdAt - a.createdAt);
@@ -403,7 +403,7 @@ async function delNews(id) {
   // 调用后端 API 执行删除操作
   // fetch('.../api/news/' + id, { method: 'DELETE' }) 发送 DELETE 请求
   // 请求头中包含 Authorization: Bearer <token> 用于身份验证
-  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+  const res = await fetch('https://mynewswork.3454381311.workers.dev/api/news/' + id, {
     method: 'DELETE',
     headers: { 'Authorization': 'Bearer ' + (user ? user.token : '') }
   });
