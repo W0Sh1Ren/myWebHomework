@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>发布新闻</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333}
+.container{max-width:1000px;margin:0 auto;padding:0 20px}
+.navbar{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:15px 0}
+.navbar .container{display:flex;justify-content:space-between;align-items:center}
+.nav-brand{color:#fff;font-size:1.4rem;font-weight:bold;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.nav-links{display:flex;gap:20px;align-items:center}
+.nav-links a{color:rgba(255,255,255,.9);text-decoration:none}
+.form-container{max-width:700px;margin:40px auto;background:#fff;padding:35px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.form-container h2{text-align:center;margin-bottom:25px}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;margin-bottom:6px;color:#555}
+.form-group input,.form-group textarea{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:5px;font-size:1rem;font-family:inherit}
+.form-group textarea:focus{outline:none;border-color:#667eea}
+.form-group textarea{resize:vertical;min-height:200px}
+.editor-content{width:100%;min-height:200px;padding:10px 12px;border:1px solid #ddd;border-radius:5px;font-size:1rem;font-family:inherit;line-height:1.6;background:#fff;overflow-y:auto}
+.editor-content:focus{outline:none;border-color:#667eea}
+.editor-content:empty:before{content:attr(data-placeholder);color:#aaa;pointer-events:none}
+.input-row{display:flex;gap:10px;align-items:flex-start}
+.input-row input{flex:1}
+.input-row .btn{white-space:nowrap;padding:10px 16px}
+.editor-toolbar{display:flex;gap:8px;margin-bottom:8px;padding:8px;background:#f8f9fa;border:1px solid #ddd;border-radius:5px}
+.editor-toolbar .btn{padding:6px 14px;font-size:.85rem}
+.form-actions{display:flex;gap:10px}
+.btn{display:inline-block;padding:8px 18px;border:1px solid #ddd;background:#fff;color:#555;border-radius:5px;font-size:.9rem;cursor:pointer;text-decoration:none;transition:all .2s}
+.btn:hover{border-color:#667eea;color:#667eea}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none}
+.btn-primary:hover{opacity:.9;color:#fff}
+.btn-success{background:#28a745;color:#fff;border:none}
+.btn-success:hover{opacity:.9;color:#fff}
+.btn-success:disabled{opacity:.5;cursor:not-allowed}
+.alert{padding:12px 18px;border-radius:5px;margin-bottom:20px}
+.alert-error{background:#fde8e8;color:#c0392b;border:1px solid #f8d7da}
+.alert-info{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
+main{padding:30px 0}
+</style>
+</head>
+<body>
+<nav class="navbar">
+<div class="container">
+<a href="index.html" class="nav-brand"><img src="https://dce.jlu.edu.cn/images/logo.png" alt="南湖新闻" style="height:28px"></a>
+<div class="nav-links" id="navLinks"></div>
+</div>
+</nav>
+<main class="container">
+<div class="form-container">
+<h2>发布新闻</h2>
+<div id="error" class="alert alert-error" style="display:none"></div>
+<div id="aiStatus" class="alert alert-info" style="display:none"></div>
+<form onsubmit="handleCreate(event)">
+<div class="form-group">
+<label for="title">新闻标题</label>
+<div class="input-row">
+<input type="text" id="title" required placeholder="请输入新闻标题">
+<button type="button" class="btn" id="aiBtn" onclick="generateByAI()">AI 帮写</button>
+</div>
+</div>
+<div class="form-group">
+<label for="content">新闻内容</label>
+<div class="editor-toolbar">
+<button type="button" class="btn" onclick="insertImageUrl()">网络图片</button>
+<button type="button" class="btn" onclick="document.getElementById('imgInput').click()">本地上传</button>
+<input type="file" id="imgInput" accept="image/*" style="display:none" onchange="uploadImage(this)">
+</div>
+<div id="content" class="editor-content" contenteditable="true" data-placeholder="点击「AI 帮写」按钮，根据标题自动生成新闻内容"></div>
+</div>
+<div class="form-actions">
+<button type="submit" class="btn btn-primary">发布</button>
+<a href="dashboard.html" class="btn">取消</a>
+</div>
+</form>
+</div>
+</main>
+<script src="create_JS.js"></script>
+</body>
+</html>

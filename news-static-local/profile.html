@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人资料</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333}
+.container{max-width:1000px;margin:0 auto;padding:0 20px}
+.navbar{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:15px 0}
+.navbar .container{display:flex;justify-content:space-between;align-items:center}
+.nav-brand{color:#fff;font-size:1.4rem;font-weight:bold;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.nav-links{display:flex;gap:20px;align-items:center}
+.nav-links a{color:rgba(255,255,255,.9);text-decoration:none}
+.form-container{max-width:500px;margin:40px auto;background:#fff;padding:35px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.form-container h2{text-align:center;margin-bottom:25px}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;margin-bottom:6px;color:#555}
+.form-group input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:5px;font-size:1rem}
+.form-group input:focus{outline:none;border-color:#667eea}
+.password-wrapper{position:relative;display:flex;align-items:stretch}
+.password-wrapper input{flex:1;padding-right:60px}
+.password-toggle{position:absolute;right:0;top:0;bottom:0;width:52px;border:none;background:transparent;color:#667eea;cursor:pointer;font-size:.85rem;border-left:1px solid #ddd;border-radius:0 5px 5px 0}
+.password-toggle:hover{background:#f5f5f5}
+.form-textarea{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:5px;font-size:1rem;font-family:inherit;resize:vertical}
+.form-textarea:focus{outline:none;border-color:#667eea}
+.avatar-preview{width:120px;height:120px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid #667eea;background:#f0f0f0}
+.avatar-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.btn{display:inline-block;padding:8px 18px;border:1px solid #ddd;border-radius:5px;font-size:.9rem;cursor:pointer;text-decoration:none;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;width:100%}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{background:#6c757d;color:#fff;border:none}
+.btn-secondary:hover{opacity:.9}
+.alert{padding:12px 18px;border-radius:5px;margin-bottom:20px}
+.alert-error{background:#fde8e8;color:#c0392b;border:1px solid #f8d7da}
+.toast-success{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:20px 40px;border-radius:10px;font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,.15);text-align:center}
+.form-divider{border:none;border-top:1px solid #eee;margin:25px 0}
+.form-actions{display:flex;gap:10px;margin-top:20px}
+.form-actions .btn{flex:1;text-align:center}
+.crop-container img{position:absolute;user-select:none;-webkit-user-drag:none;max-width:none}
+.crop-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center}
+.crop-modal-content{background:#fff;padding:25px 25px 20px;border-radius:12px;max-width:440px;width:90%;text-align:center}
+.crop-modal-content h3{margin-bottom:10px;color:#333}
+.crop-container{width:260px;height:260px;margin:15px auto;position:relative;border-radius:50%;overflow:hidden;background:#eee;cursor:grab}
+.crop-container:active{cursor:grabbing}
+.crop-container::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.5);pointer-events:none}
+.crop-container .crop-border{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;border:2px solid rgba(255,255,255,.6);pointer-events:none;box-sizing:border-box}
+.crop-hint{color:#999;font-size:.85rem;margin-bottom:10px}
+.crop-actions{display:flex;gap:10px;justify-content:center;margin-top:15px}
+.crop-actions .btn{flex:none;width:auto;padding:8px 30px}
+main{padding:30px 0}
+</style>
+</head>
+<body>
+<nav class="navbar">
+<div class="container">
+<a href="index.html" class="nav-brand"><img src="https://dce.jlu.edu.cn/images/logo.png" alt="南湖新闻" style="height:28px"></a>
+<div class="nav-links" id="navLinks"></div>
+</div>
+</nav>
+<main class="container">
+<div class="form-container">
+<h2>个人资料</h2>
+<div id="error" class="alert alert-error" style="display:none"></div>
+<div id="success" class="toast-success" style="display:none"></div>
+<form onsubmit="handleSave(event)">
+<div class="avatar-section" style="text-align:center;margin-bottom:25px">
+<div class="avatar-preview" id="avatarPreview">
+<img id="avatarImg" src="" alt="头像">
+</div>
+<div class="form-group">
+<label>头像</label>
+<button type="button" class="btn btn-secondary" onclick="document.getElementById('avatarInput').click()" style="width:auto;display:inline-block">选择头像图片</button>
+<input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+<p style="color:#999;font-size:.8rem;margin-top:6px">支持 JPG/PNG 格式，建议 200×200 以上正方形图片</p>
+</div>
+</div>
+<div class="form-group">
+<label for="username">用户名</label>
+<input type="text" id="username" required placeholder="请输入用户名">
+</div>
+<div class="form-group">
+<label for="bio">简介</label>
+<textarea id="bio" class="form-textarea" rows="3" placeholder="写一段个人简介吧"></textarea>
+</div>
+<hr class="form-divider">
+<p style="text-align:center;color:#999;margin-bottom:20px;font-size:0.9rem">以下为可选，留空表示不修改密码</p>
+<div class="form-group">
+<label for="oldPassword">当前密码</label>
+<div class="password-wrapper">
+<input type="password" id="oldPassword" placeholder="输入当前密码">
+<button type="button" class="password-toggle" onclick="togglePwd('oldPassword', this)" tabindex="-1">显示</button>
+</div>
+</div>
+<div class="form-group">
+<label for="newPassword">新密码</label>
+<div class="password-wrapper">
+<input type="password" id="newPassword" placeholder="新密码（至少6位）">
+<button type="button" class="password-toggle" onclick="togglePwd('newPassword', this)" tabindex="-1">显示</button>
+</div>
+</div>
+<div class="form-group">
+<label for="confirmPassword">确认新密码</label>
+<div class="password-wrapper">
+<input type="password" id="confirmPassword" placeholder="再次输入新密码">
+<button type="button" class="password-toggle" onclick="togglePwd('confirmPassword', this)" tabindex="-1">显示</button>
+</div>
+</div>
+<div class="form-actions">
+<button type="submit" class="btn btn-primary">保存修改</button>
+<a href="dashboard.html" class="btn btn-secondary">返回后台</a>
+</div>
+</form>
+<div id="cropModal" class="crop-modal" style="display:none">
+<div class="crop-modal-content">
+<h3>调整头像</h3>
+<p class="crop-hint">鼠标滚轮缩放 · 拖动调整位置 · 圆形区域即为头像预览效果</p>
+<div class="crop-container" id="cropContainer">
+<img id="cropImage" src="" alt="裁剪头像">
+<div class="crop-border"></div>
+</div>
+<div class="crop-actions">
+<button type="button" class="btn btn-secondary" onclick="cancelCrop()">重新选择</button>
+<button type="button" class="btn btn-primary" onclick="confirmCrop()" style="width:auto;padding:8px 30px">确认</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script src="profile_JS.js"></script>
+<script>
+function togglePwd(id,btn){var i=document.getElementById(id);i.type==='password'?(i.type='text',btn.textContent='隐藏'):(i.type='password',btn.textContent='显示')}
+</script>
+</body>
+</html>
