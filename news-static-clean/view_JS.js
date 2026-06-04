@@ -13,12 +13,16 @@ function logout() { if (confirm('确定要退出登录吗？')) { localStorage.r
 loadNav();
 
 const id = parseInt(new URLSearchParams(location.search).get('id'));
-const news = JSON.parse(localStorage.getItem('news') || '[]').find(n => n.id === id);
 const el = document.getElementById('newsDetail');
 
-if (!news) {
-  el.innerHTML = '<h1>新闻不存在</h1><p>请返回首页查看其他新闻</p><div class=\"news-footer\"><a href=\"index.html\" class=\"btn btn-link\">&laquo; 返回首页</a></div>';
-} else {
-  const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
-  el.innerHTML = '<h1>' + news.title + '</h1><div class="news-meta">作者: ' + news.authorName + ' | 发布时间: ' + new Date(news.createdAt).toLocaleString('zh-CN') + '</div><div class="news-content">' + news.content + '</div><div class="news-footer"><a href="index.html" class="btn btn-link">&laquo; 返回首页</a>' + (user && user.id === news.authorId ? '<a href="edit.html?id=' + news.id + '" class="btn">编辑</a>' : '') + '</div>';
-}
+(async () => {
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const news = res.ok ? await res.json() : null;
+
+  if (!news) {
+    el.innerHTML = '<h1>新闻不存在</h1><p>请返回首页查看其他新闻</p><div class=\"news-footer\"><a href=\"index.html\" class=\"btn btn-link\">&laquo; 返回首页</a></div>';
+  } else {
+    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    el.innerHTML = '<h1>' + news.title + '</h1><div class="news-meta">作者: ' + news.authorName + ' | 发布时间: ' + new Date(news.createdAt).toLocaleString('zh-CN') + '</div><div class="news-content">' + news.content + '</div><div class="news-footer"><a href="index.html" class="btn btn-link">&laquo; 返回首页</a>' + (user && user.id === news.authorId ? '<a href="edit.html?id=' + news.id + '" class="btn">编辑</a>' : '') + '</div>';
+  }
+})();

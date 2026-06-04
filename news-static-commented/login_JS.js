@@ -33,10 +33,9 @@ const DEFAULT_BIO = '这个人还没有简介哦~';
  * 【功能说明】
  * 1. 阻止表单默认提交行为（不让页面自动刷新）
  * 2. 获取用户在表单中输入的用户名和密码
- * 3. 从 localStorage 中读取已注册的用户数据
- * 4. 验证用户名和密码是否与已注册数据匹配
- * 5. 登录成功后将用户信息存入 localStorage（键名为 currentUser）
- * 6. 页面跳转到用户后台管理页面 dashboard.html
+ * 3. 调用后端 API（/api/login）验证用户名和密码
+ * 4. 登录成功后从服务端获取 token 和用户信息，存入 localStorage（键名为 currentUser）
+ * 5. 页面跳转到用户后台管理页面 dashboard.html
  * 
  * 【参数说明】
  * @param {Event} e - 事件对象（Event Object）
@@ -51,13 +50,15 @@ const DEFAULT_BIO = '这个人还没有简介哦~';
  * - 参数（parameter）：函数运行时需要接收的外部数据
  * - 事件对象（Event）：浏览器自动创建的对象，记录了事件发生时的各种信息
  * - 表单提交（form submit）：用户点击登录按钮或按回车键时触发的动作
+ * - async/await：JavaScript 中处理异步操作（如网络请求）的语法糖
+ * - fetch API：浏览器内置的用于发送 HTTP 请求的接口
  */
-function handleLogin(e) {
+async function handleLogin(e) {
   /**
    * e.preventDefault() - 阻止浏览器的"默认行为"
    * 
    * 默认行为：当表单（<form>）提交时，浏览器会自动刷新页面
-   * 但我们希望在"不刷新页面"的情况下，先用 JavaScript 验证用户名和密码
+   * 但我们希望在"不刷新页面"的情况下，先用 JavaScript 发送登录请求
    * 所以调用 preventDefault() 告诉浏览器："别刷新，让我自己处理！"
    */
   e.preventDefault();
@@ -137,131 +138,144 @@ function handleLogin(e) {
   } /* --- if (!username || !password) 结束 --- */
 
   /**
-   * JSON.parse(localStorage.getItem('users') || '[]')
+   * try/catch 语句 - 处理异步请求中可能出现的网络错误
    * 
-   * 【专业术语详解 - localStorage】
-   * localStorage（本地存储）：
-   * - 浏览器提供的一种"持久化存储"机制
-   * - 数据会一直保存在浏览器中，即使关闭页面甚至重启浏览器也不会丢失
-   * - 只能存储字符串（string）类型的数据
-   * - 每个网站有自己的独立存储空间，不能互相访问
-   * 
-   * 【专业术语详解 - JSON】
-   * JSON（JavaScript Object Notation，JavaScript 对象表示法）：
-   * - 一种轻量级的"数据交换格式"，长得和 JavaScript 的对象很像
-   * - 因为 localStorage 只能存字符串，所以我们把复杂数据（如数组、对象）用 JSON.stringify 转成字符串保存
-   * - 读取时再用 JSON.parse 把字符串转回原来的 JavaScript 数据格式
-   * 
-   * 【代码逻辑拆解 - 从内向外读】
-   * 第1步：localStorage.getItem('users')
-   *   → 从 localStorage 中获取键名为 'users' 的数据
-   *   → 如果数据不存在，返回 null
-   * 第2步：localStorage.getItem('users') || '[]'
-   *   → 如果 getItem 返回了 null（没有用户数据），就使用空数组字符串 '[]'
-   *   → 这样 JSON.parse 就不会报错了
-   * 第3步：JSON.parse(...)
-   *   → 把字符串解析成 JavaScript 数组（Array）
-   * 
-   * users 变量：存储所有已注册用户的数组
-   * 每个元素是一个对象，包含 id、username、password 等属性
-   * 类型：Array（数组）
+   * 在 JavaScript 中，网络请求可能因为各种原因失败（断网、服务器宕机等）
+   * try 块中放置可能出错的代码，catch 块中处理错误
+   * 这样即使请求失败，页面也不会崩溃，而是显示友好的错误提示
    */
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
+  try {
+
+    /**
+     * fetch() 函数 - 发送 HTTP 请求到后端 API
+     * 
+     * fetch 是浏览器内置的 API，用于发送网络请求（取代老旧的 XMLHttpRequest）
+     * 第一个参数：请求的 URL（统一资源定位符），即后端 API 的地址
+     * 第二个参数：一个配置对象，包含请求的方法、头部、请求体等信息
+     * 
+     * await 关键字 - 等待异步操作完成
+     * 因为网络请求需要时间（可能几百毫秒），await 会让 JavaScript 等待
+     * 服务器响应后再继续执行下一行代码
+     * 
+     * 配置对象详解：
+     * - method: 'POST'     → HTTP 请求方法，POST 表示"提交数据"
+     * - headers: {...}     → 请求头，告诉服务器我们发送的是 JSON 格式数据
+     *   'Content-Type': 'application/json' 表示请求体是 JSON 格式
+     * - body: JSON.stringify({ username, password })
+     *   → 请求体，把用户名和密码转成 JSON 字符串发送给服务器
+     *   例如：'{"username":"张三","password":"123456"}'
+     * 
+     * res 变量（response 的缩写）：
+     * 存储服务器返回的响应对象
+     * 类型：Response（响应对象）
+     */
+    const res = await fetch('https://nanhu-news-api.workers.dev/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    /**
+     * res.json() - 将响应体解析为 JavaScript 对象
+     * 
+     * 服务器返回的响应体是一个 JSON 格式的字符串（如 '{"id":1,"username":"张三"}'）
+     * res.json() 方法会把这个 JSON 字符串解析成一个 JavaScript 对象
+     * 这样我们就可以通过 data.id、data.username 等方式访问数据
+     * 
+     * 这个操作也是异步的，所以需要 await
+     * 
+     * data 变量：存储解析后的服务器响应数据
+     * 类型：Object（对象）
+     */
+    const data = await res.json();
+
+    /**
+     * if (!res.ok) - 检查 HTTP 响应状态码
+     * 
+     * res.ok 是 Response 对象的一个布尔值属性
+     * - 如果 HTTP 状态码在 200-299 范围内，res.ok 为 true（请求成功）
+     * - 否则 res.ok 为 false（请求失败，如 401 未授权、500 服务器错误）
+     * 
+     * !res.ok 表示"如果请求失败"
+     * 
+     * 当请求失败时，服务器会返回一个包含 error 字段的 JSON 对象
+     * 例如：{"error": "用户名或密码错误"}
+     * 我们把这个错误信息显示在页面上让用户看到
+     */
+    if (!res.ok) {
+      errEl.textContent = data.error;       // 显示服务端返回的具体错误信息
+      errEl.style.display = 'block';        // 让错误提示区域显示出来
+      return;                               // 提前退出，不执行后面的保存逻辑
+    }
+
+    /**
+     * 登录成功！执行以下操作：
+     * 
+     * localStorage.setItem(key, value) 详解：
+     * - key：存储时的键名，之后用 getItem(key) 来获取
+     * - value：要存储的值，必须是字符串
+     * 
+     * JSON.stringify() 详解：
+     * - 将 JavaScript 对象或数组转换成 JSON 字符串
+     * - 因为 localStorage 只能存字符串，所以需要先转换
+     * 
+     * 【存储的数据结构】
+     * {
+     *   id: data.id,                    // 用户的唯一标识（数字），由服务端分配
+     *   username: data.username,        // 用户名
+     *   token: data.token,              // 认证 Token（登录凭证），后续请求需要带上
+     *   avatar: data.avatar || DEFAULT_AVATAR, // 头像URL，如果没设置就用默认头像
+     *   bio: data.bio || DEFAULT_BIO    // 用户简介，如果没设置就用默认简介
+     * }
+     * 
+     * 注意：
+     * - 这里特意没有存储 password（密码），这是一个安全设计
+     * - 即使 localStorage 被攻击者读取，也无法获取到密码
+     * - token 是服务端返回的登录凭证，后续所有 API 请求都需要在
+     *   Authorization 请求头中带上这个 token 来验证用户身份
+     * - || 运算符在这里用于"提供默认值"：如果 data.avatar 不存在（undefined），就使用 DEFAULT_AVATAR
+     */
+    localStorage.setItem('currentUser', JSON.stringify({
+      id: data.id,                               // 用户的唯一标识符（由服务端生成）
+      username: data.username,                    // 用户名
+      token: data.token,                          // 认证令牌（JWT Token），用于后续 API 鉴权
+      avatar: data.avatar || DEFAULT_AVATAR,      // 头像URL（无则使用默认）
+      bio: data.bio || DEFAULT_BIO                // 个人简介（无则使用默认）
+    }));
+
+    /**
+     * window.location.href - 浏览器页面跳转
+     * 
+     * window.location 是浏览器地址栏相关的对象
+     * .href 属性表示当前页面的完整 URL 地址
+     * 给 href 赋新值，浏览器就会立即跳转到那个地址
+     * 
+     * 'dashboard.html' - 登录成功后要跳转到的页面
+     * 这是一个相对路径，表示当前目录下的 dashboard.html 文件
+     * 
+     * 这行代码的效果等同于用户在浏览器地址栏输入 dashboard.html 并回车
+     */
+    window.location.href = 'dashboard.html';
 
   /**
-   * Array.find() 方法 - 在数组中查找第一个满足条件的元素
+   * catch (err) - 捕获并处理网络层面的错误
    * 
-   * 语法：array.find(回调函数)
-   * 作用：遍历数组中的每一个元素，对每个元素执行回调函数
-   *       如果回调函数返回 true，则 find 方法立即返回这个元素
-   *       如果遍历完都没有找到，返回 undefined
+   * 这里的 err 是 Error 对象，包含错误的详细信息
+   * 常见的网络错误：
+   * - 断网（用户电脑没有连接互联网）
+   * - DNS 解析失败（域名无法访问）
+   * - 服务器完全无响应（服务宕机）
+   * - 请求超时（服务器响应太慢）
    * 
-   * 【箭头函数语法 u => ... 详解】
-   * u => u.username === username && u.password === password
-   * 等价于：
-   * function(u) {
-   *   return u.username === username && u.password === password;
-   * }
+   * 注意：HTTP 4xx/5xx 状态码不会触发 catch，那属于 res.ok 为 false 的情况
+   * catch 只捕获网络层面的异常（如断网、DNS 错误等）
    * 
-   * 箭头函数（Arrow Function）是 ES6（ECMAScript 2015）引入的简写语法
-   * - u 是参数，代表数组中的当前元素（这里是一个用户对象）
-   * - => 后面是函数体
-   * - 当函数体只有一条表达式时，会自动 return 该表达式的结果
-   * 
-   * 【查找逻辑】
-   * u.username === username：当前遍历到的用户的用户名是否等于输入的用户名
-   * u.password === password：当前遍历到的用户的密码是否等于输入的密码
-   * &&：逻辑与运算符，两边都为 true 结果才为 true
-   * 
-   * user 变量：存储找到的用户对象
-   * 如果找到了，user 就是该用户对象
-   * 如果没找到，user 是 undefined
-   * 类型：Object | undefined（对象或未定义）
+   * 显示"网络错误"而不是具体的错误信息，是为了避免暴露
+   * 技术细节给普通用户
    */
-  const user = users.find(u => u.username === username && u.password === password);
+  } catch (err) {
+    errEl.textContent = '网络错误';           // 显示通用网络错误提示
+    errEl.style.display = 'block';            // 让错误提示区域显示出来
+  } /* --- try/catch 结束 --- */
 
-  /**
-   * if 条件判断 - 验证是否找到了匹配的用户
-   * 
-   * !user 的含义：
-   * - 如果 user 是 undefined（没找到用户）
-   * - 在 JavaScript 中，undefined 被视为"假值"（false）
-   * - 取反 ! 后变成 true，表示"条件成立，进入 if 代码块"
-   * 
-   * 也就是说：如果没有找到匹配的用户，就执行下面的错误处理代码
-   * 
-   * 注意：这里提示的是"用户名或密码错误"
-   * 出于安全考虑，不告诉用户是"用户名不存在"还是"密码错误"
-   * 这样可以防止黑客通过错误提示来猜测哪些用户名已注册
-   */
-  if (!user) {
-    errEl.textContent = '用户名或密码错误';
-    errEl.style.display = 'block';
-    return;
-  } /* --- if (!user) 结束 --- */
-
-  /**
-   * 登录成功！执行以下操作：
-   * 
-   * localStorage.setItem(key, value) 详解：
-   * - key：存储时的键名，之后用 getItem(key) 来获取
-   * - value：要存储的值，必须是字符串
-   * 
-   * JSON.stringify() 详解：
-   * - 将 JavaScript 对象或数组转换成 JSON 字符串
-   * - 因为 localStorage 只能存字符串，所以需要先转换
-   * 
-   * 【存储的数据结构】
-   * {
-   *   id: user.id,                    // 用户的唯一标识（数字）
-   *   username: user.username,        // 用户名
-   *   avatar: user.avatar || DEFAULT_AVATAR, // 头像URL，如果没设置就用默认头像
-   *   bio: user.bio || DEFAULT_BIO    // 用户简介，如果没设置就用默认简介
-   * }
-   * 
-   * 注意：
-   * - 这里特意没有存储 password（密码），这是一个安全设计
-   * - 即使 localStorage 被攻击者读取，也无法获取到密码
-   * - || 运算符在这里用于"提供默认值"：如果 user.avatar 不存在（undefined），就使用 DEFAULT_AVATAR
-   */
-  localStorage.setItem('currentUser', JSON.stringify({
-    id: user.id,                               // 用户的唯一标识符
-    username: user.username,                    // 用户名
-    avatar: user.avatar || DEFAULT_AVATAR,      // 头像URL（无则使用默认）
-    bio: user.bio || DEFAULT_BIO                // 个人简介（无则使用默认）
-  }));
-
-  /**
-   * window.location.href - 浏览器页面跳转
-   * 
-   * window.location 是浏览器地址栏相关的对象
-   * .href 属性表示当前页面的完整 URL 地址
-   * 给 href 赋新值，浏览器就会立即跳转到那个地址
-   * 
-   * 'dashboard.html' - 登录成功后要跳转到的页面
-   * 这是一个相对路径，表示当前目录下的 dashboard.html 文件
-   * 
-   * 这行代码的效果等同于用户在浏览器地址栏输入 dashboard.html 并回车
-   */
-  window.location.href = 'dashboard.html';
-} /* --- function handleLogin(e) 结束 --- */
+} /* --- async function handleLogin(e) 结束 --- */

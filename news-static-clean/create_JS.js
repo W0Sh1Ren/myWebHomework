@@ -120,7 +120,7 @@ function uploadImage(input) {
   input.value = '';
 }
 
-function handleCreate(e) {
+async function handleCreate(e) {
   e.preventDefault();
   const title = document.getElementById('title').value.trim();
   const content = document.getElementById('content').innerHTML.trim();
@@ -129,9 +129,13 @@ function handleCreate(e) {
     document.getElementById('error').style.display = 'block';
     return;
   }
-  const news = JSON.parse(localStorage.getItem('news') || '[]');
+  // 调用后端 API 发布新闻
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  news.push({ id: Date.now(), title, content, authorId: user.id, authorName: user.username, createdAt: Date.now() });
-  localStorage.setItem('news', JSON.stringify(news));
-  window.location.href = 'dashboard.html';
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (user ? user.token : '') },
+    body: JSON.stringify({ title: title, content: content })
+  });
+  if (res.ok) { window.location.href = 'dashboard.html'; }
+  else { const d = await res.json(); alert(d.error || '发布失败'); }
 }

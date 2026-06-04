@@ -1,7 +1,7 @@
 /**
  * register_JS.js - 用户注册页
  * 功能：提供用户名、密码、确认密码的注册表单
- * 数据存储：使用 localStorage 模拟数据库
+ * 数据存储：使用后端 API 将用户数据保存在服务器
  * 
  * ─── 专业术语解释（面向零基础读者）────────────────────────────
  * 
@@ -26,6 +26,17 @@
  *   类比：把一个真实的物体（对象）用文字描述下来（变成字符串）。
  *   例如：JSON.stringify({name:"张三"}) 的结果是 '{"name":"张三"}'。
  *   为什么需要它？因为 localStorage 只能存字符串，不能直接存对象。
+ * 
+ * 【fetch API】
+ *   浏览器内置的用于发送 HTTP 请求的接口。
+ *   它可以向服务器发送请求（如 GET、POST），并获取服务器的响应。
+ *   比老旧的 XMLHttpRequest（XHR）更现代、更易用。
+ * 
+ * 【async/await】
+ *   JavaScript 中处理异步操作（如网络请求）的语法。
+ *   async 用来声明一个异步函数，await 用来等待一个异步操作完成。
+ *   简单理解：await 让 JavaScript "等着"网络请求回来再继续执行。
+ *   类比：你在网上买了东西，await 就像"等快递到了再拆箱"。
  * 
  * 【箭头函数 (=>)】
  *   ES6（2015年）引入的一种更简洁的函数写法。
@@ -86,7 +97,8 @@ const DEFAULT_BIO = '这个人还没有简介哦~';
  * 
  * 【功能】
  *   当用户点击注册按钮时，这个函数会被调用。
- *   它负责：验证输入 → 检查用户名是否被占用 → 保存到 localStorage → 跳转页面。
+ *   它负责：验证输入 → 调用后端 API 注册 → 跳转到登录页面。
+ *   用户数据保存在服务器端，不再使用 localStorage。
  * 
  * 【参数】
  *   e (Event) - 事件对象。
@@ -97,15 +109,15 @@ const DEFAULT_BIO = '这个人还没有简介哦~';
  * 
  * 【返回值】
  *   无（undefined）。函数执行完毕后不返回任何值。
- *   它直接操作页面（显示错误信息）和 localStorage（保存用户数据）。
+ *   它直接操作页面（显示错误信息）和调用后端 API（注册用户）。
  */
-function handleRegister(e) {
+async function handleRegister(e) {
   /* ─────────────────────────────────────────────────────
    * 第1步：阻止表单的默认提交行为
    * ───────────────────────────────────────────────────── */
   // e.preventDefault() —— 告诉浏览器"不要刷新页面，让我自己来处理"。
   // 表单的默认行为是：将数据发送到服务器并刷新页面。但我们用的是
-  // localStorage（本地存储），不需要与服务器通信，所以阻止默认行为。
+  // JavaScript 异步请求，不需要页面刷新，所以阻止默认行为。
   e.preventDefault();
   // ↑ 结束：阻止表单默认提交行为
 
@@ -189,7 +201,7 @@ function handleRegister(e) {
     errEl.style.display = 'block';
 
     // return 语句：提前结束函数的执行，不再继续执行后续代码
-    // 也就是说：一旦发现有空字段，就不执行保存用户数据了
+    // 也就是说：一旦发现有空字段，就不执行注册请求了
     return;
 
   // ↓ 结束：if (!username || !password || !confirmPassword) 的代码块
@@ -237,156 +249,134 @@ function handleRegister(e) {
   }
 
   /* ─────────────────────────────────────────────────────
-   * 第6步：从 localStorage 中读取已有的用户数据
+   * 第6步：调用后端 API 完成注册
    * ───────────────────────────────────────────────────── */
 
   /**
-   * localStorage.getItem('users')
-   *   从 localStorage 中获取键（key）为 'users' 的数据。
-   *   这里的 'users' 就像仓库里的一个抽屉标签，
-   *   我们为它分配一个唯一的名字，方便以后存取。
-   *   如果之前没有存过任何用户数据，getItem 会返回 null。
+   * try/catch 语句
    * 
-   * || '[]'
-   *   ||（逻辑或）在这里的作用是"提供默认值"。
-   *   如果 localStorage.getItem('users') 返回 null（没有数据），
-   *   就用 '[]'（一个空数组的 JSON 字符串）替代。
-   *   这样可以确保后面的 JSON.parse 永远不会收到 null，
-   *   避免程序报错崩溃。
-   * 
-   * JSON.parse(...)
-   *   把 JSON 格式的字符串解析成真正的 JavaScript 数组。
-   *   localStorage 只能存字符串，所以存的时候我们用 JSON.stringify
-   *   把数组转成字符串，取的时候就用 JSON.parse 把字符串转回数组。
-   * 
-   * 【数据类型推导】
-   *   users 是一个数组（Array），里面每个元素是一个"用户对象"。
-   *   例如：[{ id: 1, username: "张三", password: "123456" }]
+   * 网络请求可能会因为断网、服务器宕机等原因失败。
+   * try 块中放可能出错的代码，如果出错，catch 块会捕获错误。
+   * 这样即使用户的网络断了，页面也不会崩溃，而是显示友好的错误提示。
    */
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  // ↑ 变量 users：存储所有已注册用户的数组
+  try {
+
+    /**
+     * fetch() 函数 - 发送 HTTP 请求到后端 API
+     * 
+     * fetch 是浏览器内置的网络请求 API，用来代替老旧的 XMLHttpRequest。
+     * 它返回一个 Promise（承诺）对象，表示"将来会有的结果"。
+     * 
+     * 第一个参数：请求的 URL
+     *   这里指向注册 API：https://nanhu-news-api.workers.dev/api/register
+     * 
+     * 第二个参数：请求配置对象
+     *   - method: 'POST'           → HTTP 方法，POST 表示"提交/创建"数据
+     *   - headers: { 'Content-Type': 'application/json' }
+     *                              → 告诉服务器："我发的是 JSON 格式的数据"
+     *   - body: JSON.stringify({ username, password })
+     *                              → 把用户名和密码转成 JSON 字符串作为请求体
+     *                              例如：'{"username":"张三","password":"123456"}'
+     * 
+     * await 关键字
+     *   因为网络请求是"异步"的（需要时间等待服务器响应），
+     *   await 让 JavaScript 暂停执行，等服务器返回结果后再继续。
+     *   类比：你点了外卖，await 就是等着外卖送到再拆开吃。
+     * 
+     * res 变量：服务器返回的响应（Response）对象
+     */
+    const res = await fetch('https://nanhu-news-api.workers.dev/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    /**
+     * res.json() - 读取响应体中的 JSON 数据
+     * 
+     * 服务器返回的响应体通常是一个 JSON 字符串，
+     * 例如成功时返回：'{"message":"注册成功"}'
+     * 失败时返回：'{"error":"用户名已存在"}'
+     * 
+     * res.json() 会把这个字符串解析成 JavaScript 对象，
+     * 这样我们就可以用 data.message 或 data.error 来访问了。
+     * 
+     * 注意：这个操作也是异步的，需要 await。
+     * 
+     * data 变量：存储解析后的服务器响应数据
+     */
+    const data = await res.json();
+
+    /**
+     * if (!res.ok) - 检查服务器是否返回了"失败"状态
+     * 
+     * res.ok 是 Response 对象的一个属性：
+     * - 如果 HTTP 状态码是 200-299（成功），res.ok = true
+     * - 如果 HTTP 状态码是 400、500 等（失败），res.ok = false
+     * 
+     * 常见的注册失败情况：
+     * - 400 Bad Request：请求数据格式错误
+     * - 409 Conflict：用户名已被注册
+     * - 500 Internal Server Error：服务器内部错误
+     * 
+     * 服务器会在响应体中返回 error 字段说明具体原因，
+     * 我们把它显示在页面上让用户知道。
+     */
+    if (!res.ok) {
+      // ↓ 注册失败，显示服务器返回的错误信息
+      errEl.textContent = data.error;    // 例如："用户名已存在"
+      errEl.style.display = 'block';     // 让错误提示显示出来
+      return;                            // 提前退出，不再继续执行
+
+    // ↓ 结束：if (!res.ok) 的代码块
+    }
 
   /* ─────────────────────────────────────────────────────
-   * 第7步：检查用户名是否已被注册
+   * 第7步：注册成功，跳转到登录页面
    * ───────────────────────────────────────────────────── */
 
-  /**
-   * users.find(u => u.username === username)
-   * 
-   * 【Array.find(回调函数)】
-   *   find 是 JavaScript 数组的一个方法。
-   *   它遍历数组中的每一个元素，对每个元素执行回调函数，
-   *   如果回调函数返回 true，find 就返回那个元素并停止查找。
-   *   如果所有元素都不满足条件，find 返回 undefined。
-   * 
-   * 【参数 u】
-   *   u 是 find 的回调函数的参数，代表数组中的当前元素。
-   *   这里每个元素 u 是一个用户对象 { id, username, password, ... }。
-   *   你也可以写成 user，但为了简洁习惯写成 u。
-   * 
-   * 【回调函数 u => u.username === username】
-   *   这是一个箭头函数。
-   *   如果当前用户对象 u 的 username 属性等于用户输入的 username，
-   *   就返回 true（找到了匹配的用户）。
-   * 
-   * 【整个表达式的含义】
-   *   在 users 数组中查找 username（数据库中的用户名）
-   *   等于 username（用户当前输入的用户名）的用户。
-   *   如果找到了，说明该用户名已被注册。
-   */
-  if (users.find(u => u.username === username)) {
-    // ↓ 如果找到了相同的用户名，说明已被注册
+    /**
+     * window.location.href = 'login.html'
+     * 
+     * window 是浏览器窗口的全局对象。
+     * location 是 window 的一个属性，代表当前页面的地址栏信息。
+     * href 是 location 的一个属性，代表当前页面的完整 URL。
+     * 
+     * 给 href 赋值一个 URL，浏览器就会立即导航到那个页面。
+     * 效果等同于用户在地址栏输入 login.html 并按回车。
+     * 
+     * 注册成功后为什么要跳转到登录页？
+     *   因为注册流程通常是：注册 → 跳转到登录页 → 用户用刚注册的
+     *   账号密码登录。这是一种常见的用户体验设计模式。
+     * 
+     * 注意：注册成功后台自动返回登录页，不保存 token（用户还没登录），
+     * 用户需要在登录页输入账号密码进行登录。
+     */
+    window.location.href = 'login.html';
+    // ↑ 结束：页面跳转到 login.html
 
-    errEl.textContent = '用户名已存在';
+  /**
+   * catch (err) - 捕获网络层面的错误
+   * 
+   * 这里的 err 是 Error（错误）对象，包含了错误详情。
+   * 
+   * 哪些情况会触发 catch？
+   * - 用户断网了（网络连接不可用）
+   * - DNS 解析失败（域名打不开）
+   * - 服务器完全无响应（宕机了）
+   * - 请求超时（服务器太慢）
+   * 
+   * 注意：HTTP 4xx、5xx 状态码（如 409 用户名已存在）不会触发 catch，
+   * 那属于服务器正常返回了响应（res.ok = false），在 if (!res.ok) 中处理。
+   * 
+   * 只显示"网络错误"而不显示具体技术细节，是出于用户体验和安全考虑。
+   */
+  } catch (err) {
+    // ↓ 网络请求失败，显示通用的网络错误提示
+    errEl.textContent = '网络错误，请检查网络连接';
     errEl.style.display = 'block';
-    return;  // 提前结束函数
-
-  // ↓ 结束：if (users.find(u => u.username === username)) 的代码块
+    // ↑ 让用户知道是网络出了问题，而不是他的操作有问题
   }
-
-  /* ─────────────────────────────────────────────────────
-   * 第8步：将新用户保存到 localStorage
-   * ───────────────────────────────────────────────────── */
-
-  /**
-   * users.push({...})
-   *   push 是数组的方法，作用是在数组末尾"追加"一个新元素。
-   *   类比：往一个排队队伍的末尾加一个人。
-   * 
-   * 【新用户对象】
-   *   id: Date.now()
-   *     Date.now() 返回当前时间的"毫秒时间戳"。
-   *     时间戳是从 1970年1月1日00:00:00 UTC 到现在的毫秒数。
-   *     例如：1717500000000
-   *     用时间戳做 ID 的好处是：两次调用 Date.now() 几乎不可能得到
-   *     相同的值（因为时间在流逝），所以可以用作唯一标识。
-   *     注意：严格来说这不绝对唯一（同一毫秒内可能重复），
-   *     但对于这个简单的示例来说已经足够了。
-   *   
-   *   username: username
-   *     这是 ES6 的"属性简写"语法。
-   *     如果属性名和变量名相同，可以只写一次。
-   *     相当于 username: username（变量 username 的值赋给属性 username）。
-   *   
-   *   password: password（同上，简写）
-   *   
- *   createdAt: Date.now()
-   *     记录用户的注册时间（时间戳格式）。
-   *     以后可以用来显示"注册于 X 天前"之类信息。
-   *   
-   *   avatar: DEFAULT_AVATAR
-   *     使用前面定义的默认头像 URL。
-   *   
-   *   bio: DEFAULT_BIO
-   *     使用前面定义的默认个人简介文字。
-   */
-  users.push({
-    id: Date.now(),       // ↓ 唯一标识：用当前时间戳生成
-    username,             // ↓ 用户名（简写属性）
-    password,             // ↓ 密码（简写属性）
-    createdAt: Date.now(),// ↓ 注册时间戳
-    avatar: DEFAULT_AVATAR, // ↓ 默认头像 URL
-    bio: DEFAULT_BIO      // ↓ 默认个人简介
-  });
-  // ↑ 结束：users.push(...)
-
-  /**
-   * localStorage.setItem('users', JSON.stringify(users))
-   * 
-   * 【JSON.stringify(users)】
-   *   将 users 数组（JavaScript 对象）转换成 JSON 字符串。
-   *   例如：[{id:1, username:"张三"}] 变成 '[{"id":1,"username":"张三"}]'
-   *   这一步是必须的，因为 localStorage 只能存储字符串。
-   * 
-   * 【localStorage.setItem('users', ...)】
-   *   将转换后的 JSON 字符串存入 localStorage，键为 'users'。
-   *   这相当于把数据"覆盖"写回仓库——旧的 'users' 数据会被替换。
-   *   因为我们在上面已经用 push 添加了新用户，所以现在 users 数组
-   *   包含了旧用户 + 新用户，setItem 会把完整的数据存回去。
-   */
-  localStorage.setItem('users', JSON.stringify(users));
-  // ↑ 结束：将更新后的用户列表保存到 localStorage
-
-  /* ─────────────────────────────────────────────────────
-   * 第9步：跳转到登录页面
-   * ───────────────────────────────────────────────────── */
-
-  /**
-   * window.location.href = 'login.html'
-   * 
-   * window 是浏览器窗口的全局对象。
-   * location 是 window 的一个属性，代表当前页面的地址栏信息。
-   * href 是 location 的一个属性，代表当前页面的完整 URL。
-   * 
-   * 给 href 赋值一个 URL，浏览器就会立即导航到那个页面。
-   * 效果等同于用户在地址栏输入 login.html 并按回车。
-   * 
-   * 注册成功后为什么要跳转到登录页？
-   *   因为注册流程通常是：注册 → 跳转到登录页 → 用户用刚注册的
-   *   账号密码登录。这是一种常见的用户体验设计模式。
-   */
-  window.location.href = 'login.html';
-  // ↑ 结束：页面跳转到 login.html
 
 // ↓ 结束：handleRegister 函数
 }

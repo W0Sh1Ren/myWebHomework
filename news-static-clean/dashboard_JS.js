@@ -16,11 +16,12 @@ function loadNav() {
 
 function logout() { if (confirm('确定要退出登录吗？')) { localStorage.removeItem('currentUser'); window.location.href = 'index.html'; } }
 
-function render() {
+async function render() {
   const user = checkAuth();
   if (!user) return;
   loadNav();
-  const allNews = JSON.parse(localStorage.getItem('news') || '[]').filter(n => n.authorId === user.id).sort((a, b) => b.createdAt - a.createdAt);
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  const allNews = (res.ok ? await res.json() : []).filter(n => n.authorId === user.id).sort((a, b) => b.createdAt - a.createdAt);
   const el = document.getElementById('dashboardContent');
   if (allNews.length === 0) {
     el.innerHTML = '<div class=\"empty-state\"><p>还没有发布过新闻</p><a href=\"create.html\" class=\"btn btn-primary\">发布第一条新闻</a></div>';
@@ -35,12 +36,14 @@ function render() {
     ).join('') + '</tbody></table>';
 }
 
-function delNews(id) {
+async function delNews(id) {
   if (!confirm('确定要删除这篇新闻吗？')) return;
-  let news = JSON.parse(localStorage.getItem('news') || '[]');
-  news = news.filter(n => n.id !== id);
-  localStorage.setItem('news', JSON.stringify(news));
-  render();
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + (user ? user.token : '') }
+  });
+  if (res.ok) render(); else alert('删除失败');
 }
 
 render();

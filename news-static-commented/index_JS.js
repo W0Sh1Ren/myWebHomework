@@ -173,17 +173,19 @@ function logout() {
  *   - authorName {string}   作者用户名
  *   - createdAt  {number}   发布时间（Unix 时间戳，毫秒）
  */
-function getNews() {
+async function getNews() {
   /**
-   * 拆解分析：
-   *   localStorage.getItem('news')        → 取字符串，如 '[{...},{...}]'
-   *   || '[]'                              → 如果没取到（null），就默认 '[]'
-   *   JSON.parse(...)                      → 把 JSON 字符串转成真正的数组
+   * 改为从后端 API 获取新闻数据
+   *   fetch('https://nanhu-news-api.workers.dev/api/news')
+   *   发送 GET 请求获取所有新闻列表
+   *   res.ok 检查响应状态是否正常（200-299）
+   *   res.json() 将响应体解析为 JSON 数组
    * 
-   * 一句话：从浏览器仓库里拿到新闻数据，转成数组返回。
-   * 如果没有新闻，就返回一个空数组 []。
+   * 一句话：从后端 API 拿到新闻数据，转成数组返回。
+   * 如果没有数据或请求失败，就返回一个空数组 []。
    */
-  return JSON.parse(localStorage.getItem('news') || '[]');
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  return res.ok ? await res.json() : [];
 } /* —— getNews 函数结束 —— */
 
 /**
@@ -287,14 +289,14 @@ function getFirstImage(html) {
  * @param {void} 不需要参数
  * @returns {undefined} 没有返回值，只修改 DOM
  */
-function render() {
+async function render() {
   // ===== 第一步：刷新导航栏 =====
   // 调用 loadNav()，根据登录状态重新生成导航栏内容
   loadNav();  // 先刷新导航栏
 
   // ===== 第二步：获取并排序新闻 =====
   /**
-   * getNews() —— 从 localStorage 拿到新闻数组
+   * await getNews() —— 从后端 API 获取新闻数组
    * .sort(...) —— 数组的排序方法
    * 
    * sort 接受一个比较函数 (a, b) => b.createdAt - a.createdAt
@@ -307,7 +309,7 @@ function render() {
    * b.createdAt - a.createdAt > 0 时 b 排前面
    * 所以结果就是"最新发布的排最前面"。
    */
-  const allNews = getNews().sort((a, b) => b.createdAt - a.createdAt);
+  const allNews = (await getNews()).sort((a, b) => b.createdAt - a.createdAt);
 
   // 找到页面上 id="newsList" 的元素
   // 这个元素是新闻卡片的容器，通常是一个 <div> 或 <section>

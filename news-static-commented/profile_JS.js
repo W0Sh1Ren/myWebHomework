@@ -238,33 +238,19 @@ function loadProfile() {
   // ---- 第 2 步：加载导航栏 ----
   loadNav();
 
-  // ---- 第 3 步：从 localStorage 获取完整用户数据 ----
-  // localStorage.getItem('users')：获取所有注册用户的数据（JSON 字符串）
-  // || '[]'：如果 users 键不存在，就用空数组字符串 '[]' 作为默认值
-  // JSON.parse(...)：解析成 JavaScript 数组
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
+  // ---- 第 3 步：从 currentUser 获取用户数据并填充表单 ----
+  // 不再从 localStorage 的 users 数组中查找用户数据，
+  // 直接从当前登录用户缓存（currentUser）中读取用户名、简介和头像
+  // 这些数据在登录时已从后端 API 获取并保存到 currentUser 中
 
-  // 在 users 数组中查找与当前用户 ID 相同的那个用户对象
-  // .find() 方法：遍历数组，参数是一个"判断函数"
-  // u => u.id === user.id：箭头函数，u 是数组中的每个元素
-  // 如果找到了就返回该元素，没找到返回 undefined
-  const userData = users.find(u => u.id === user.id);
+  // 填充用户名
+  document.getElementById('username').value = user.username;
 
-  // ---- 第 4 步：填充表单 ----
-  // document.getElementById('username').value：
-  // 找到 id="username" 的 <input> 元素，设置它的 value（输入框的文本内容）
-  // userData ? userData.username : user.username：三目运算符
-  // 如果 userData 存在（即从数组中找到了用户），就用数组中的 username，
-  // 否则用当前登录用户缓存中的 username
-  document.getElementById('username').value = userData ? userData.username : user.username;
+  // 填充简介（bio），如果为空则使用默认简介文本
+  document.getElementById('bio').value = user.bio || DEFAULT_BIO;
 
-  // 填充简介（bio）：如果 userData 有 bio 就用，否则用 user.bio
-  // || DEFAULT_BIO：如果 bio 为空（undefined/null/""），就用默认简介文本
-  document.getElementById('bio').value = (userData ? userData.bio : user.bio) || DEFAULT_BIO;
-
-  // ---- 第 5 步：加载头像 ----
-  // 获取头像 URL，优先级：userData.avatar > user.avatar > DEFAULT_AVATAR
-  const avatarUrl = (userData ? userData.avatar : user.avatar) || DEFAULT_AVATAR;
+  // 加载头像：如果用户没有设置头像，使用默认头像
+  const avatarUrl = user.avatar || DEFAULT_AVATAR;
   // 找到 id="avatarImg" 的 <img> 元素，设置它的 src（图片源地址）
   document.getElementById('avatarImg').src = avatarUrl;
 } /* ── loadProfile 函数结束 ── */
@@ -1051,7 +1037,7 @@ cropContainer.addEventListener('wheel', function(e) {
  *     delete 操作符用于删除对象的属性。这里删除了 dataset 中的 preview 属性，
  *     这样下次保存时不会使用旧的裁剪数据。
  */
-function handleSave(e) {
+async function handleSave(e) {
   // ---- 第 1 步：阻止表单默认提交行为 ----
   // 如果不阻止，浏览器会刷新页面，导致我们的 JavaScript 处理逻辑失效
   e.preventDefault();
@@ -1063,18 +1049,19 @@ function handleSave(e) {
   // ---- 第 3 步：收集表单数据 ----
   // .value：获取表单输入框的当前文本内容
   // .trim()：去掉首尾空白字符
-  const username = document.getElementById('username').value.trim();
-  const bio = document.getElementById('bio').value.trim();
+  const newUsername = document.getElementById('username').value.trim();
+  const newBio = document.getElementById('bio').value.trim();
 
-  // 密码输入框：不需要 trim（密码中的空格是有意义的）
-  // 注意：这些是密码框 <input type="password"> 的值
-  const oldPassword = document.getElementById('oldPassword').value;
-  const newPassword = document.getElementById('newPassword').value;
-  const confirmPassword = document.getElementById('confirmPassword').value;
+  const avatarInput = document.getElementById('avatarInput');
+  // 获取头像数据，优先级：
+  // 1. avatarInput.dataset.preview（裁剪后的新头像数据，由 confirmCrop 设置的）
+  // 2. user.avatar（用户原有的头像）
+  // 3. DEFAULT_AVATAR（默认头像）
+  const avatarBase64 = avatarInput.dataset.preview || user.avatar || DEFAULT_AVATAR;
 
   // ---- 第 4 步：验证用户名 ----
   // 如果用户名为空（用户删光了所有字符）
-  if (!username) {
+  if (!newUsername) {
     // 显示错误消息：找到 id="error" 的元素，设置其文本内容
     document.getElementById('error').textContent = '用户名不能为空';
     // 显示错误提示框（display: block 使其可见）
@@ -1083,114 +1070,96 @@ function handleSave(e) {
     document.getElementById('success').style.display = 'none';
     // 结束函数，不继续执行保存
     return;
-  } /* ── if (!username) 结束 ── */
+  } /* ── if (!newUsername) 结束 ── */
 
-  // ---- 第 5 步：获取 users 数组并找到当前用户索引 ----
-  // 从 localStorage 读取所有注册用户数据
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  // 查找当前用户在数组中的索引位置
-  // findIndex 返回第一个满足条件的元素的索引（从 0 开始），找不到返回 -1
-  const userIndex = users.findIndex(u => u.id === user.id);
+  // ---- 第 5 步：调用后端 API 更新用户资料 ----
+  /**
+   * 不再保存到 localStorage 的 users 数组，改为通过后端 API 更新
+   *
+   * API 地址：https://nanhu-news-api.workers.dev/api/users/ + user.id
+   * HTTP 方法：PUT（更新服务器上的现有资源）
+   *
+   * 请求头：
+   *   Content-Type: application/json   —— 请求体为 JSON 格式
+   *   Authorization: Bearer <token>    —— 身份验证 token，从 localStorage 的 currentUser 中获取
+   *
+   * 请求体：包含更新后的用户名、简介和头像的 JSON 对象
+   *
+   * 如果服务器返回成功（res.ok）：
+   *   1. 从响应中获取更新后的用户信息
+   *   2. 更新 localStorage 中的 currentUser（保留原有的 token）
+   *   3. 显示成功提示，刷新导航栏
+   * 如果失败，从响应 JSON 中获取 error 信息并弹窗提示
+   */
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  try {
+    const res = await fetch('https://nanhu-news-api.workers.dev/api/users/' + currentUser.id, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (currentUser ? currentUser.token : '')
+      },
+      body: JSON.stringify({
+        username: newUsername,
+        bio: newBio,
+        avatar: avatarBase64
+      })
+    });
 
-  // 如果找不到当前用户（数据异常，例如用户被删除）
-  if (userIndex === -1) {
-    document.getElementById('error').textContent = '用户数据异常，请重新登录';
-    document.getElementById('error').style.display = 'block';
-    document.getElementById('success').style.display = 'none';
-    return;
-  } /* ── if (userIndex === -1) 结束 ── */
+    if (res.ok) {
+      // 解析服务器返回的更新后用户信息
+      const updated = await res.json();
+      // 保留原有的 token，因为服务器不会在响应中重新发放 token
+      const currentToken = currentUser.token;
 
-  // ---- 第 6 步：处理密码修改（如果用户填写了密码相关字段） ----
-  // 如果三个密码字段中有任何一个不为空，说明用户想改密码
-  // 注意：空字符串 '' 是 falsy 值，所以判断逻辑是"只要有一个有内容"
-  if (oldPassword || newPassword || confirmPassword) {
-    // 验证旧密码是否正确
-    // users[userIndex].password 是存储的密码，oldPassword 是用户输入的旧密码
-    if (users[userIndex].password !== oldPassword) {
-      document.getElementById('error').textContent = '当前密码错误';
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('success').style.display = 'none';
-      return;
-    } /* ── 密码验证失败 结束 ── */
+      // ---- 更新 currentUser 缓存 ----
+      // 更新 localStorage 中的 currentUser 对象
+      // 确保导航栏和其他页面能立即看到最新的用户信息
+      localStorage.setItem('currentUser', JSON.stringify({
+        id: updated.id,               // 用户 ID（来自服务器）
+        username: updated.username,   // 更新后的用户名
+        token: currentToken,          // 保留原有的 token
+        avatar: updated.avatar || '', // 更新后的头像（可能为空）
+        bio: updated.bio || ''        // 更新后的简介（可能为空）
+      }));
 
-    // 验证新密码长度（至少 6 个字符）
-    if (newPassword.length < 6) {
-      document.getElementById('error').textContent = '新密码长度至少6位';
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('success').style.display = 'none';
-      return;
-    } /* ── 密码长度验证失败 结束 ── */
+      // ---- 显示成功提示 ----
+      // 隐藏错误提示框
+      document.getElementById('error').style.display = 'none';
+      // 设置成功消息文本
+      document.getElementById('success').textContent = '保存成功！';
+      // 显示成功提示框
+      document.getElementById('success').style.display = 'block';
 
-    // 验证两次密码是否一致
-    if (newPassword !== confirmPassword) {
-      document.getElementById('error').textContent = '两次密码输入不一致';
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('success').style.display = 'none';
-      return;
-    } /* ── 密码一致性验证失败 结束 ── */
+      // setTimeout：延迟执行函数，这里是 2000 毫秒（2 秒）后自动隐藏成功提示
+      // 这样用户看到"保存成功"后，提示会自动消失，无需手动关闭
+      setTimeout(function(){
+        // 2 秒后执行：隐藏成功提示框
+        document.getElementById('success').style.display = 'none';
+      }, 2000); /* ── setTimeout 回调结束 ── */
 
-    // 所有验证通过，更新密码
-    users[userIndex].password = newPassword;
-  } /* ── if (oldPassword || newPassword || confirmPassword) 结束 ── */
+      // ---- 刷新导航栏（显示更新后的用户名和头像） ----
+      loadNav();
 
-  // ---- 第 7 步：获取头像数据 ----
-  // 找到文件选择输入框元素
-  const avatarInput = document.getElementById('avatarInput');
-  // 获取头像数据，优先级：
-  // 1. avatarInput.dataset.preview（裁剪后的新头像数据，由 confirmCrop 设置的）
-  // 2. users[userIndex].avatar（用户原有的头像）
-  // 3. DEFAULT_AVATAR（默认头像）
-  const newAvatar = avatarInput.dataset.preview || users[userIndex].avatar || DEFAULT_AVATAR;
+      // ---- 清空密码输入框（安全考虑：防止密码留在页面上） ----
+      document.getElementById('oldPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
 
-  // ---- 第 8 步：更新用户数据 ----
-  // 更新用户名
-  users[userIndex].username = username;
-  // 更新简介，如果为空则使用默认简介
-  users[userIndex].bio = bio || DEFAULT_BIO;
-  // 更新头像
-  users[userIndex].avatar = newAvatar;
+      // ---- 删除暂存的裁剪数据 ----
+      // delete 操作符：删除对象的属性
+      // 删除 dataset.preview 属性，避免下次提交时误用旧的裁剪数据
+      delete avatarInput.dataset.preview;
 
-  // ---- 第 9 步：保存到 localStorage ----
-  // JSON.stringify(users)：把 users 数组转换成 JSON 格式的字符串
-  // localStorage.setItem('users', ...)：存入 localStorage
-  localStorage.setItem('users', JSON.stringify(users));
-
-  // ---- 第 10 步：更新当前用户缓存 ----
-  // 同时更新 currentUser，确保导航栏和其他页面能立即看到最新的用户信息
-  localStorage.setItem('currentUser', JSON.stringify({
-    id: user.id,               // 用户 ID 不变
-    username: username,        // 更新后的用户名
-    avatar: newAvatar,         // 更新后的头像
-    bio: bio || DEFAULT_BIO    // 更新后的简介
-  }));
-
-  // ---- 第 11 步：显示成功提示 ----
-  // 隐藏错误提示框
-  document.getElementById('error').style.display = 'none';
-  // 设置成功消息文本
-  document.getElementById('success').textContent = '保存成功！';
-  // 显示成功提示框
-  document.getElementById('success').style.display = 'block';
-
-  // setTimeout：延迟执行函数，这里是 2000 毫秒（2 秒）后自动隐藏成功提示
-  // 这样用户看到"保存成功"后，提示会自动消失，无需手动关闭
-  setTimeout(function(){
-    // 2 秒后执行：隐藏成功提示框
-    document.getElementById('success').style.display = 'none';
-  }, 2000); /* ── setTimeout 回调结束 ── */
-
-  // ---- 第 12 步：刷新导航栏（显示更新后的用户名和头像） ----
-  loadNav();
-
-  // ---- 第 13 步：清空密码输入框（安全考虑：防止密码留在页面上） ----
-  document.getElementById('oldPassword').value = '';
-  document.getElementById('newPassword').value = '';
-  document.getElementById('confirmPassword').value = '';
-
-  // ---- 第 14 步：删除暂存的裁剪数据 ----
-  // delete 操作符：删除对象的属性
-  // 删除 dataset.preview 属性，避免下次提交时误用旧的裁剪数据
-  delete avatarInput.dataset.preview;
+    } else {
+      // 服务器返回错误状态码，读取错误信息并弹窗提示用户
+      const d = await res.json();
+      alert(d.error || '保存失败');
+    }
+  } catch (err) {
+    // 网络请求失败（如断网、服务器不可达），弹窗提示
+    alert('保存失败: ' + err.message);
+  }
 } /* ── handleSave 函数结束 ── */
 
 // =================== 页面初始化 ===================

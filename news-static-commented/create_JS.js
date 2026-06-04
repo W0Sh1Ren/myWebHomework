@@ -855,7 +855,7 @@ function uploadImage(input) {
  *   e 是事件对象，包含了事件的相关信息
  *   比如哪个元素触发了事件、事件类型等
  */
-function handleCreate(e) {
+async function handleCreate(e) {
   // 阻止表单的默认提交行为
   // 如果不阻止，页面会刷新，导致我们的 JavaScript 逻辑失效
   e.preventDefault();
@@ -879,85 +879,38 @@ function handleCreate(e) {
     return;
   } /* end of if (!title || !content) */
 
-  // ===== 获取已有新闻列表 =====
+  // ===== 调用后端 API 发布新闻 =====
   /**
-   * 从 localStorage 中读取 'news' 数据
-   * localStorage.getItem('news') 可能返回：
-   *   - 一个 JSON 字符串（如 '[{...},{...}]'）
-   *   - null（如果从来没有任何新闻）
-   * || '[]' 表示如果为 null，则使用空数组 '[]' 作为默认值
-   * JSON.parse() 将 JSON 字符串解析为 JavaScript 数组
+   * 不再将新闻保存到 localStorage，而是通过后端 API 提交
+   * 
+   * 从 localStorage 中读取当前登录用户的信息（包含 token 用于身份验证）
+   * API 地址：https://nanhu-news-api.workers.dev/api/news
+   * HTTP 方法：POST（向服务器提交新资源）
+   * 请求头：
+   *   Content-Type: application/json  —— 告诉服务器请求体是 JSON 格式
+   *   Authorization: Bearer <token>   —— Bearer 身份验证，token 来自登录时保存的用户信息
+   * 请求体：包含新闻标题和内容的 JSON 对象
+   * 
+   * 如果服务器返回成功（res.ok 为 true，HTTP 状态码 200~299），跳转到后台管理页面
+   * 如果失败，从响应 JSON 中获取 error 信息并弹窗提示
    */
-  const news = JSON.parse(localStorage.getItem('news') || '[]');
-
-  /**
-   * 读取当前登录用户的信息
-   * 因为之前 checkAuth() 已经验证过用户已登录，
-   * 所以这里一定有用户信息
-   */
-  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-
-  // ===== 创建新新闻对象并添加到列表 =====
-  /**
-   * news.push() 方法将一个新元素添加到数组的末尾
-   */
-  news.push({
-    /**
-     * id: Date.now() - 使用当前时间戳作为新闻的唯一 ID
-     * Date.now() 返回自 1970年1月1日 00:00:00 UTC 到现在的毫秒数
-     * 例如：1717500000000
-     * 时间戳是唯一的且一直递增的，适合作为 ID
-     * 比使用 1、2、3 这样的序号更安全（不会重复）
-     */
-    id: Date.now(),
-    /**
-     * title: title - 新闻标题
-     * 等号左边是对象的属性名（key）
-     * 等号右边是变量 title 的值（用户输入的标题）
-     * 因为属性名和变量名相同，也可以简写为 title 即可（ES6 简写语法）
-     */
-    title: title,
-    /**
-     * content: content - 新闻内容（HTML 格式）
-     * 包含用户输入的文字、插入的图片等 HTML 内容
-     */
-    content: content,
-    /**
-     * authorId: currentUser.id - 发布者的用户 ID
-     * 关联到用户数据，可以知道这条新闻是谁发布的
-     */
-    authorId: currentUser.id,
-    /**
-     * authorName: currentUser.username - 发布者的用户名
-     * 在显示新闻时直接使用，无需再查询用户表
-     * 这样即使以后用户改名了，这条新闻的作者名还是当时的名字
-     */
-    authorName: currentUser.username,
-    /**
-     * createdAt: Date.now() - 新闻发布时间
-     * 同样使用时间戳保存
-     * 在显示新闻时可以转换为人类可读的日期格式
-     */
-    createdAt: Date.now()
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + (user ? user.token : '')
+    },
+    body: JSON.stringify({ title: title, content: content })
   });
 
-  // ===== 保存回 localStorage =====
-  /**
-   * localStorage.setItem(key, value) 将数据存储到浏览器的本地存储中
-   * 
-   * 第一个参数 'news'：存储的数据名称（key）
-   * 第二个参数 JSON.stringify(news)：将 JavaScript 数组转换为 JSON 字符串
-   * 
-   * 为什么需要 JSON.stringify()？
-   * localStorage 只能存储字符串类型的数据
-   * 数组和对象不能直接存储，必须转换为 JSON 字符串
-   * JSON.stringify(news) 将数组转换为字符串格式，例如：
-   * '[{"id":1717500000,"title":"...","content":"...",...}]'
-   */
-  localStorage.setItem('news', JSON.stringify(news));
-
-  // ===== 发布成功后跳转 =====
-  // 将浏览器地址跳转到后台管理页面
-  // dashboard.html 是新闻管理页面，可以查看所有已发布的新闻
-  window.location.href = 'dashboard.html';
+  // ===== 处理响应结果 =====
+  if (res.ok) {
+    // 发布成功，跳转到后台管理页面
+    window.location.href = 'dashboard.html';
+  } else {
+    // 发布失败，从响应中读取错误信息并弹窗提示用户
+    const d = await res.json();
+    alert(d.error || '发布失败');
+  }
 } /* end of handleCreate */

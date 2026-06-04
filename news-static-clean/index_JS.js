@@ -18,8 +18,9 @@ function logout() {
   }
 }
 
-function getNews() {
-  return JSON.parse(localStorage.getItem('news') || '[]');
+async function getNews() {
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  return res.ok ? await res.json() : [];
 }
 
 function stripHtml(html) {
@@ -35,9 +36,9 @@ function getFirstImage(html) {
   return img ? img.src : null;
 }
 
-function render() {
+async function render() {
   loadNav();
-  const allNews = getNews().sort((a, b) => b.createdAt - a.createdAt);
+  const allNews = (await getNews()).sort((a, b) => b.createdAt - a.createdAt);
   const list = document.getElementById('newsList');
   if (allNews.length === 0) {
     const user = JSON.parse(localStorage.getItem('currentUser') || 'null');

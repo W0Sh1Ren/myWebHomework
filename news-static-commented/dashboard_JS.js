@@ -251,7 +251,7 @@ function logout() {
  *   new Date(n.createdAt)：将数字（时间戳，毫秒数）转换为 JavaScript 的 Date 日期对象，
  *     然后才能调用 toLocaleString 等方法进行格式化。
  */
-function render() {
+async function render() {
   // 步骤1：检查登录状态
   // 调用 checkAuth() 函数，如果未登录会跳转并返回 null
   // 如果返回 null，!user 为 true，函数立即结束（return）
@@ -270,24 +270,23 @@ function render() {
    * 步骤3、4、5：获取数据 → 筛选 → 排序
    * 
    * 以下代码是"方法链"（method chaining）的写法：
-   *   先 JSON.parse(...)，然后 .filter(...)，然后 .sort(...)
+   *   先 fetch 获取数据，然后 .filter(...)，然后 .sort(...)
    *   每个方法处理完后返回一个新值，下一个方法接着处理。
    * 
    * 【详细分解】：
-   *   ① localStorage.getItem('news')
-   *      从浏览器本地存储中读取键名为 'news' 的数据
-   *   ② || '[]'
-   *      如果 'news' 不存在（返回 null），使用空数组字符串 '[]' 作为默认值
-   *   ③ JSON.parse(...)
-   *      将 JSON 格式的字符串解析为 JavaScript 数组
-   *   ④ .filter(n => n.authorId === user.id)
+   *   ① fetch('https://nanhu-news-api.workers.dev/api/news')
+   *      发送 GET 请求从后端 API 获取所有新闻数据
+   *   ② res.ok ? await res.json() : []
+   *      如果响应正常，解析 JSON 为数组；否则返回空数组
+   *   ③ .filter(n => n.authorId === user.id)
    *      过滤数组，只保留 authorId（作者ID）与当前用户 ID 相同的新闻
    *      n 代表数组中的每一个元素（一篇新闻对象）
-   *   ⑤ .sort((a, b) => b.createdAt - a.createdAt)
+   *   ④ .sort((a, b) => b.createdAt - a.createdAt)
    *      按 createdAt（创建时间，单位：毫秒时间戳）倒序排列
    *      最新的新闻排在最前面
    */
-  const allNews = JSON.parse(localStorage.getItem('news') || '[]')
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news');
+  const allNews = (res.ok ? await res.json() : [])
     .filter(n => n.authorId === user.id)
     .sort((a, b) => b.createdAt - a.createdAt);
   // ========== 数据筛选排序结束 ==========
@@ -390,41 +389,31 @@ function render() {
  *     将 JavaScript 对象或数组转换为 JSON 格式的字符串，
  *     因为 localStorage 只能存储字符串，不能直接存储对象。
  */
-function delNews(id) {
+async function delNews(id) {
   // 弹出确认对话框，询问用户是否确定要删除
   // 如果用户点击"取消"（confirm 返回 false），则 !confirm(...) 为 true
   // 执行 return 立即结束函数，不执行删除操作
   if (!confirm('确定要删除这篇新闻吗？')) return;
   // ========== 用户确认通过 ==========
 
-  // 从 localStorage 中读取所有新闻数据
-  // localStorage.getItem('news')：读取键名为 'news' 的字符串
-  // || '[]'：如果数据不存在，使用空数组字符串 '[]'
-  // JSON.parse(...)：将 JSON 字符串解析为 JavaScript 数组
-  // 数组中的每个元素是一篇新闻对象，包含 id, title, authorId, createdAt 等属性
-  let news = JSON.parse(localStorage.getItem('news') || '[]');
+  // 从 localStorage 中获取当前登录用户的 token
+  // 用于在请求头中传递 Bearer token 进行身份验证
+  const user = JSON.parse(localStorage.getItem('currentUser'));
 
-  // 使用 filter() 方法过滤数组
-  // 回调函数 n => n.id !== id：
-  //   如果新闻的 id 不等于要删除的 id，返回 true（保留）
-  //   如果新闻的 id 等于要删除的 id，返回 false（移除）
-  // 这行代码的实质是：创建一个新数组，只保留"不是要删除的那篇"的新闻
-  // 【重要概念】filter 不会修改原数组，而是返回一个过滤后的新数组
-  news = news.filter(n => n.id !== id);
-  // ========== 删除操作完成 ==========
+  // 调用后端 API 执行删除操作
+  // fetch('.../api/news/' + id, { method: 'DELETE' }) 发送 DELETE 请求
+  // 请求头中包含 Authorization: Bearer <token> 用于身份验证
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + (user ? user.token : '') }
+  });
+  // ========== 删除请求已发送 ==========
 
-  // 将更新后的新闻数组重新保存到 localStorage 中
-  // JSON.stringify(news)：将 JavaScript 数组转换为 JSON 字符串
-  // localStorage.setItem('news', ...)：以键名 'news' 存储到本地存储
-  // 这样就完成了"持久化"存储——即使刷新页面，删除结果也不会丢失
-  localStorage.setItem('news', JSON.stringify(news));
-  // ========== 数据已保存到本地存储 ==========
-
-  // 重新调用 render() 函数，刷新页面显示
-  // 这时页面会重新从 localStorage 读取数据，展示修改后的新闻列表
-  // 被删除的新闻将不再出现在表格中
-  render();
-  // ========== 页面已刷新 ==========
+  // 检查响应状态：res.ok 为 true 表示删除成功
+  // 如果成功，重新调用 render() 刷新页面显示
+  // 如果失败，弹出提示告知用户
+  if (res.ok) render(); else alert('删除失败');
+  // ========== 页面已刷新或提示失败 ==========
 }
 // ========== delNews 函数结束 ==========
 

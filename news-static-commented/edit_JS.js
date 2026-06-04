@@ -136,50 +136,49 @@ if (user) {
  */
 const id = parseInt(new URLSearchParams(location.search).get('id'));
 
-// =================== 查找要编辑的新闻 ===================
+// =================== 从后端 API 加载新闻 ===================
 
 /**
- * news（变量）—— 找到的要编辑的新闻对象
- * 查找逻辑：
- *   1. localStorage.getItem('news') —— 从本地存储获取所有新闻的 JSON 字符串
- *      || '[]'：如果取不到（没有新闻数据），默认使用空数组字符串 '[]'
- *   2. JSON.parse(...) —— 把 JSON 字符串解析为 JavaScript 数组
- *   3. .find(n => ...) —— 数组的 find 方法，遍历数组，找到第一个符合条件的元素
- *      n => n.id === id && n.authorId === user.id 是一个箭头函数
- *      - 箭头函数：一种简洁的函数写法，n 是参数（代表数组中的每个新闻对象）
- *      - n.id === id：新闻的 id 必须等于 URL 中的 id
- *      - n.authorId === user.id：新闻的作者 ID 必须等于当前登录用户的 ID
- *    两者都满足才返回该新闻，确保只能编辑自己发布的新闻
- *    如果没找到，返回 undefined（未定义）
+ * 通过 async IIFE（立即执行的异步函数表达式）从后端 API 加载新闻数据
+ * 
+ * API 地址：https://nanhu-news-api.workers.dev/api/news/ + id
+ * HTTP 方法：GET（从服务器获取资源）
+ * 
+ * 不再从 localStorage 读取新闻列表，而是由后端 API 返回指定 ID 的新闻对象
+ * 如果服务器返回成功（res.ok），则解析响应中的 JSON 数据；
+ * 如果失败或找不到，跳转到后台管理页面
  */
-const news = JSON.parse(localStorage.getItem('news') || '[]').find(n => n.id === id && n.authorId === user.id);
+(async () => {
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const news = res.ok ? await res.json() : null;
 
-/**
- * 安全检查：如果找不到符合条件的新闻（不是自己发布的，或该 ID 不存在）
- * 则浏览器跳转到后台管理页面，不让用户继续编辑
- * 这是一种权限控制，防止用户通过修改 URL 参数编辑别人的文章
- */
-if (!news) {
-  window.location.href = 'dashboard.html';  /* 跳转到后台管理页面 */
-} /* --- 权限检查结束 --- */
+  /**
+   * 安全检查：如果找不到新闻（服务器返回错误或数据不存在）
+   * 则浏览器跳转到后台管理页面，不让用户继续编辑
+   */
+  if (!news) {
+    window.location.href = 'dashboard.html';
+    return;
+  } /* --- 权限检查结束 --- */
 
-// =================== 预填充表单 ===================
+  // =================== 预填充表单 ===================
 
-/**
- * 将找到的新闻的原始标题和内容填入编辑表单
- * document.getElementById('title')：找到标题输入框元素
- * .value：表单元素的值（用户输入的内容）
- * 这里把 news.title（新闻原标题）赋给输入框，用户可以看到原来的标题
- */
-document.getElementById('title').value = news.title;
+  /**
+   * 将找到的新闻的原始标题和内容填入编辑表单
+   * document.getElementById('title')：找到标题输入框元素
+   * .value：表单元素的值（用户输入的内容）
+   * 这里把 news.title（新闻原标题）赋给输入框，用户可以看到原来的标题
+   */
+  document.getElementById('title').value = news.title;
 
-/**
- * document.getElementById('content')：找到内容编辑区域（富文本编辑器）
- * .innerHTML：元素的内部 HTML 内容（可以包含加粗、图片等格式）
- * 这里把 news.content（新闻原内容 HTML）赋给编辑器
- * 用户可以看到原来的内容，并在此基础上修改
- */
-document.getElementById('content').innerHTML = news.content;
+  /**
+   * document.getElementById('content')：找到内容编辑区域（富文本编辑器）
+   * .innerHTML：元素的内部 HTML 内容（可以包含加粗、图片等格式）
+   * 这里把 news.content（新闻原内容 HTML）赋给编辑器
+   * 用户可以看到原来的内容，并在此基础上修改
+   */
+  document.getElementById('content').innerHTML = news.content;
+})();
 
 // =================== 编辑提交处理 ===================
 
@@ -195,7 +194,7 @@ document.getElementById('content').innerHTML = news.content;
  *   这里的 e 是表单提交事件（submit event）
  * @returns {void} 没有返回值
  */
-function handleEdit(e) {
+async function handleEdit(e) {
   /* 阻止表单默认提交行为，防止页面刷新 */
   e.preventDefault();
 
@@ -229,41 +228,41 @@ function handleEdit(e) {
   } /* --- 表单验证结束 --- */
 
   /**
-   * 从 localStorage 中获取所有新闻数据
-   * 注意：这里重新获取一次，因为其他操作可能已经修改了数据
-   * 确保我们操作的是最新的数据
-   * allNews（变量）—— 存储所有新闻的数组
+   * 调用后端 API 更新新闻
+   *
+   * 不再将修改保存到 localStorage，改为通过 HTTP PUT 请求提交给后端 API
+   *
+   * API 地址：https://nanhu-news-api.workers.dev/api/news/ + id
+   * HTTP 方法：PUT（更新服务器上的现有资源）
+   *
+   * 请求头：
+   *   Content-Type: application/json   —— 请求体为 JSON 格式
+   *   Authorization: Bearer <token>    —— 身份验证 token，从 localStorage 的 currentUser 中获取
+   *
+   * 请求体：包含更新后的标题和内容的 JSON 对象
+   *
+   * 如果服务器返回成功（res.ok），跳转到新闻详情页 view.html
+   * 如果失败，从响应 JSON 中获取 error 信息并弹窗提示
    */
-  let allNews = JSON.parse(localStorage.getItem('news') || '[]');
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + (user ? user.token : '')
+    },
+    body: JSON.stringify({ title: title, content: content })
+  });
 
-  /**
-   * findIndex —— 数组方法，返回第一个满足条件的元素的索引（位置）
-   * findIndex(n => n.id === id)：找到数组中 id 等于变量 id 的新闻
-   *   如果找到，返回该元素在数组中的位置（从0开始计数）
-   *   如果没找到，返回 -1
-   * idx（变量）—— 要修改的新闻在数组中的索引位置
-   */
-  const idx = allNews.findIndex(n => n.id === id);
-
-  /* 如果找到了该新闻（idx 不等于 -1），则更新它的标题和内容 */
-  if (idx !== -1) {
-    allNews[idx].title = title;    /* 更新新闻标题为表单中输入的新标题 */
-    allNews[idx].content = content; /* 更新新闻内容为编辑器中的新内容 */
-  } /* --- 新闻更新结束 --- */
-
-  /**
-   * 将更新后的新闻数组保存回 localStorage
-   * JSON.stringify(allNews)：把 JavaScript 数组转换为 JSON 字符串
-   * localStorage.setItem('news', ...)：以 'news' 为 key 存储到本地存储
-   * 这样数据就持久化了，下次页面加载时能读取到更新后的数据
-   */
-  localStorage.setItem('news', JSON.stringify(allNews));
-
-  /**
-   * 跳转回后台管理页面
-   * window.location.href：浏览器的当前地址，给它赋值会让页面跳转
-   */
-  window.location.href = 'dashboard.html';
+  /* 处理响应结果 */
+  if (res.ok) {
+    /* 更新成功，跳转到新闻详情页面 */
+    window.location.href = 'view.html?id=' + id;
+  } else {
+    /* 更新失败，读取错误信息并弹窗提示用户 */
+    const d = await res.json();
+    alert(d.error || '保存失败');
+  }
 } /* --- handleEdit 函数结束 --- */
 
 // =================== 插入图片 ===================

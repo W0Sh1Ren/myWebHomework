@@ -155,112 +155,106 @@ loadNav();
 const id = parseInt(new URLSearchParams(location.search).get('id'));
 
 /**
- * 从 localStorage 中查找新闻数据，并找到 ID 匹配的那一条
+ * 从后端 API 获取新闻数据
  *
  * 详细拆解：
- *   1. localStorage.getItem('news') —— 从本地存储中获取 'news' 数据
- *   2. || '[]' —— 如果 'news' 不存在（null），就用空数组字符串代替
- *   3. JSON.parse(...) —— 将 JSON 字符串解析为 JavaScript 数组
- *   4. .find(n => n.id === id) —— 数组的 find 方法：
- *      - 遍历数组中的每一个元素（每个元素是一篇新闻对象）
- *      - 用箭头函数 n => n.id === id 检查新闻的 id 是否等于我们想要的 id
- *      - 如果找到则返回该新闻对象，找不到则返回 undefined
- *
- * 箭头函数 (Arrow Function):
- *   n => n.id === id 等价于传统的:
- *   function(n) { return n.id === id; }
- *   是一种更简洁的函数写法。
+ *   1. fetch('https://nanhu-news-api.workers.dev/api/news/' + id)
+ *      发送 GET 请求获取指定 ID 的新闻
+ *   2. res.ok —— 检查响应状态是否正常（状态码 200-299）
+ *   3. res.json() —— 将响应体从 JSON 格式解析为 JavaScript 对象
+ *   4. 如果请求失败（res.ok 为 false），news 设为 null
  *
  * 最终结果:
  *   - 如果找到对应 ID 的新闻，news 变量就是一个新闻对象
- *   - 如果没有找到，news 变量就是 undefined（未定义）
+ *   - 如果没有找到或请求失败，news 变量就是 null
  */
-const news = JSON.parse(localStorage.getItem('news') || '[]').find(n => n.id === id);
 
 // 获取页面上 id="newsDetail" 的元素，后续用来填充新闻详情内容
 // document.getElementById() 是浏览器提供的 DOM（文档对象模型）操作方法
 const el = document.getElementById('newsDetail');
 
-/*
- * 条件判断：检查新闻是否存在
- * !news 表示"取反"——如果 news 是 undefined（不存在），!news 为 true
- * 如果 news 不存在，进入 if 分支，显示"新闻不存在"的提示
- * 否则进入 else 分支，显示新闻详情
- */
-if (!news) {
-  /*
-   * 新闻不存在时的处理：
-   * 在 newsDetail 元素中插入一段提示 HTML
-   * <h1> 是大标题标签
-   * <p> 是段落标签
-   * &laquo; 是 HTML 实体，显示为 « 符号（双左尖括号）
-   * class="btn btn-link" 是 CSS 类名，用来控制样式
-   */
-  el.innerHTML = '<h1>新闻不存在</h1><p>请返回首页查看其他新闻</p><div class="news-footer"><a href="index.html" class="btn btn-link">&laquo; 返回首页</a></div>';
-} /* if (!news) 结束——新闻不存在分支结束 */
-else {
-  /*
-   * 新闻存在时的处理：显示新闻详情
-   * 首先从本地存储中再次获取当前登录的用户信息
-   * 之所以要重新获取，是因为页面加载时虽然已经调用过 loadNav，
-   * 但这里需要一个独立的 user 对象来判断"当前用户是否是本文作者"
-   */
-  const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+// 使用 IIFE（立即执行函数表达式）来支持 async/await
+// 因为顶级作用域不能直接使用 await
+(async () => {
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const news = res.ok ? await res.json() : null;
 
   /*
-   * 渲染新闻详情 HTML
-   *
-   * 使用字符串拼接（+ 号连接多行字符串）构建完整的新闻详情内容，
-   * 赋值给 el.innerHTML，浏览器会自动解析渲染。
-   *
-   * 各个部分的含义：
-   *
-   * 1. <h1> + news.title + </h1>
-   *    —— 新闻标题，用一级标题显示
-   *
-   * 2. news-meta 区域：
-   *    —— 显示作者名称和发布时间
-   *    news.authorName: 新闻的作者名字
-   *    new Date(news.createdAt).toLocaleString('zh-CN'):
-   *       - new Date() 将时间戳/日期字符串转换为 Date 日期对象
-   *       - toLocaleString('zh-CN') 按中国的时间格式显示，
-   *         例如 "2026/6/4 下午3:30:00"
-   *
-   * 3. news-content 区域：
-   *    —— 新闻正文内容
-   *    注意：这里直接插入了 news.content，如果新闻内容中有换行符 \n，
-   *    HTML 中不会自动换行。原本的注释提到了可以用
-   *    .replace(/\n/g, '<br>') 来把换行替换成 HTML 的 <br> 换行标签，
-   *    但当前代码没有实现这个替换。
-   *
-   * 4. news-footer 区域：
-   *    —— 底部操作区
-   *    - "返回首页"链接始终显示
-   *    - "编辑"按钮仅在当前用户是新闻作者时显示
-   *      判断条件：user && user.id === news.authorId
-   *      - user: 当前登录用户（如果未登录则为 null）
-   *      - user.id: 当前登录用户的 ID
-   *      - news.authorId: 新闻作者的 ID
-   *      两者相等，说明当前用户就是作者，显示编辑按钮
-   *      如果不等或未登录，则不显示（三元运算符返回空字符串 ''）
+   * 条件判断：检查新闻是否存在
+   * !news 表示"取反"——如果 news 是 null（不存在），!news 为 true
+   * 如果新闻不存在，进入 if 分支，显示"新闻不存在"的提示
+   * 否则进入 else 分支，显示新闻详情
    */
-  el.innerHTML =
-    '<h1>' + news.title + '</h1>' +                                         /* 新闻标题 */
-    '<div class="news-meta">作者: ' + news.authorName +                     /* 作者名 */
-    ' | 发布时间: ' + new Date(news.createdAt).toLocaleString('zh-CN') +    /* 格式化后的发布时间 */
-    '</div>' +
-    '<div class="news-content">' + news.content + '</div>' +                /* 新闻正文 */
-    '<div class="news-footer">' +                                           /* 底部区域开始 */
-      '<a href="index.html" class="btn btn-link">&laquo; 返回首页</a>' +    /* 返回首页链接 */
-      /*
-       * 条件渲染编辑按钮：
-       * user && user.id === news.authorId 的含义：
-       *   1. 先判断 user 是否为真（即用户是否已登录）
-       *   2. 如果已登录，再判断 user.id 是否等于 news.authorId
-       *   3. 两个条件都满足 → 显示编辑按钮
-       *   4. 任一条件不满足 → 显示空字符串（不显示按钮）
-       * 编辑按钮链接到 edit.html?id=xxx，其中 xxx 是新闻的 ID
-       */
-      (user && user.id === news.authorId ? '<a href="edit.html?id=' + news.id + '" class="btn">编辑</a>' : '') +
-    '</div>'; /* news-footer 结束 */
-} /* else 结束——新闻存在分支结束 */
+  if (!news) {
+    /*
+     * 新闻不存在时的处理：
+     * 在 newsDetail 元素中插入一段提示 HTML
+     * <h1> 是大标题标签
+     * <p> 是段落标签
+     * &laquo; 是 HTML 实体，显示为 « 符号（双左尖括号）
+     * class="btn btn-link" 是 CSS 类名，用来控制样式
+     */
+    el.innerHTML = '<h1>新闻不存在</h1><p>请返回首页查看其他新闻</p><div class="news-footer"><a href="index.html" class="btn btn-link">&laquo; 返回首页</a></div>';
+  } /* if (!news) 结束——新闻不存在分支结束 */
+  else {
+    /*
+     * 新闻存在时的处理：显示新闻详情
+     * 首先从本地存储中获取当前登录的用户信息
+     * 用于判断"当前用户是否是本文作者"以决定是否显示编辑按钮
+     */
+    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    /*
+     * 渲染新闻详情 HTML
+     *
+     * 使用字符串拼接（+ 号连接多行字符串）构建完整的新闻详情内容，
+     * 赋值给 el.innerHTML，浏览器会自动解析渲染。
+     *
+     * 各个部分的含义：
+     *
+     * 1. <h1> + news.title + </h1>
+     *    —— 新闻标题，用一级标题显示
+     *
+     * 2. news-meta 区域：
+     *    —— 显示作者名称和发布时间
+     *    news.authorName: 新闻的作者名字
+     *    new Date(news.createdAt).toLocaleString('zh-CN'):
+     *       - new Date() 将时间戳/日期字符串转换为 Date 日期对象
+     *       - toLocaleString('zh-CN') 按中国的时间格式显示，
+     *         例如 "2026/6/4 下午3:30:00"
+     *
+     * 3. news-content 区域：
+     *    —— 新闻正文内容
+     *
+     * 4. news-footer 区域：
+     *    —— 底部操作区
+     *    - "返回首页"链接始终显示
+     *    - "编辑"按钮仅在当前用户是新闻作者时显示
+     *      判断条件：user && user.id === news.authorId
+     *      - user: 当前登录用户（如果未登录则为 null）
+     *      - user.id: 当前登录用户的 ID
+     *      - news.authorId: 新闻作者的 ID
+     *      两者相等，说明当前用户就是作者，显示编辑按钮
+     *      如果不等或未登录，则不显示（三元运算符返回空字符串 ''）
+     */
+    el.innerHTML =
+      '<h1>' + news.title + '</h1>' +                                         /* 新闻标题 */
+      '<div class="news-meta">作者: ' + news.authorName +                     /* 作者名 */
+      ' | 发布时间: ' + new Date(news.createdAt).toLocaleString('zh-CN') +    /* 格式化后的发布时间 */
+      '</div>' +
+      '<div class="news-content">' + news.content + '</div>' +                /* 新闻正文 */
+      '<div class="news-footer">' +                                           /* 底部区域开始 */
+        '<a href="index.html" class="btn btn-link">&laquo; 返回首页</a>' +    /* 返回首页链接 */
+        /*
+         * 条件渲染编辑按钮：
+         * user && user.id === news.authorId 的含义：
+         *   1. 先判断 user 是否为真（即用户是否已登录）
+         *   2. 如果已登录，再判断 user.id 是否等于 news.authorId
+         *   3. 两个条件都满足 → 显示编辑按钮
+         *   4. 任一条件不满足 → 显示空字符串（不显示按钮）
+         * 编辑按钮链接到 edit.html?id=xxx，其中 xxx 是新闻的 ID
+         */
+        (user && user.id === news.authorId ? '<a href="edit.html?id=' + news.id + '" class="btn">编辑</a>' : '') +
+      '</div>'; /* news-footer 结束 */
+  } /* else 结束——新闻存在分支结束 */
+})(); /* IIFE 结束 */

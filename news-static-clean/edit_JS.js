@@ -19,12 +19,16 @@ if (user) {
 }
 
 const id = parseInt(new URLSearchParams(location.search).get('id'));
-const news = JSON.parse(localStorage.getItem('news') || '[]').find(n => n.id === id && n.authorId === user.id);
-if (!news) { window.location.href = 'dashboard.html'; }
-document.getElementById('title').value = news.title;
-document.getElementById('content').innerHTML = news.content;
+// 从后端 API 加载新闻数据
+(async () => {
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id);
+  const news = res.ok ? await res.json() : null;
+  if (!news) { window.location.href = 'dashboard.html'; return; }
+  document.getElementById('title').value = news.title;
+  document.getElementById('content').innerHTML = news.content;
+})();
 
-function handleEdit(e) {
+async function handleEdit(e) {
   e.preventDefault();
   const title = document.getElementById('title').value.trim();
   const content = document.getElementById('content').innerHTML.trim();
@@ -33,11 +37,15 @@ function handleEdit(e) {
     document.getElementById('error').style.display = 'block';
     return;
   }
-  let allNews = JSON.parse(localStorage.getItem('news') || '[]');
-  const idx = allNews.findIndex(n => n.id === id);
-  if (idx !== -1) { allNews[idx].title = title; allNews[idx].content = content; }
-  localStorage.setItem('news', JSON.stringify(allNews));
-  window.location.href = 'dashboard.html';
+  // 调用后端 API 更新新闻
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const res = await fetch('https://nanhu-news-api.workers.dev/api/news/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (user ? user.token : '') },
+    body: JSON.stringify({ title: title, content: content })
+  });
+  if (res.ok) { window.location.href = 'view.html?id=' + id; }
+  else { const d = await res.json(); alert(d.error || '保存失败'); }
 }
 
 function insertAtCursor(html) {
