@@ -1,3 +1,9 @@
-name = "nanhu-news-api"
+name = "mynewswork"
 main = "worker/index.js"
-compatibility_date = "2024-12-01"
+compatibility_date = "2026-06-01"
+
+# KV 命名空间绑定（需要在 Cloudflare Dashboard 中配置）
+# 变量名必须与代码中的 env.NEWS_KV 一致
+# kv_namespaces = [
+#   { binding = "NEWS_KV", id = "你的KV命名空间ID" }
+# ]
