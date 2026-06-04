@@ -1,0 +1,63 @@
+南湖新闻 - 部署到 Cloudflare 免费计划
+========================================
+
+一、后端部署（Workers + KV）
+-----------------------------
+
+1. 打开 https://dash.cloudflare.com 登录账号
+
+2. 创建 KV 命名空间：
+   左侧菜单 → Workers 和 Pages → KV → 创建命名空间
+   命名空间名称输入：NEWS_KV → 创建
+
+3. 创建 Worker：
+   左侧菜单 → Workers 和 Pages → 创建 Worker
+   名称输入：nanhu-news-api（或你喜欢的名字）
+   部署方式选"编辑代码"或直接点击创建
+
+4. 绑定 KV 命名空间：
+   进入 Worker 页面 → 设置 → 变量 → KV 命名空间绑定
+   点击"添加绑定"
+   变量名称输入：NEWS_KV
+   KV 命名空间选择：刚才创建的 NEWS_KV
+   点击保存
+
+5. 粘贴代码：
+   回到 Worker 的"代码"选项卡
+   删除默认的示例代码
+   把 worker/index.js 里面的全部内容复制粘贴进去
+   点击"部署"按钮（蓝色）
+
+6. 记录 API 地址：
+   部署后能看到 Worker 的域名，例如：
+   https://nanhu-news-api.workers.dev
+   记下这个地址，后面前端需要用到
+
+
+二、前端部署（Pages）
+---------------------
+
+1. 左侧菜单 → Workers 和 Pages → 创建 → Pages
+   选择"直接上传"
+   项目名称输入：nanhu-news
+   把 news-static-clean 文件夹拖拽到上传区域
+   点击部署
+
+2. 部署完成后访问：
+   https://nanhu-news.pages.dev
+
+
+三、前端对接后端
+----------------
+
+部署完以上两步后，两个服务已经在跑了，但前端还在读写 localStorage。
+需要把前端 JS 改成调用后端 API，才能实现多设备数据共享。
+
+修改方式：在每个 JS 文件顶部添加一行：
+
+   const API_BASE = 'https://nanhu-news-api.workers.dev';
+
+然后把所有 localStorage.getItem('news') 替换为 fetch(API_BASE + '/api/news')，
+所有 localStorage.setItem 替换为对应的 fetch POST/PUT/DELETE 请求。
+
+如果你需要，我可以帮你一次性修改所有前端文件。

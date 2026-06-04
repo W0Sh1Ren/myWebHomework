@@ -1,0 +1,25 @@
+# 系统文件
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+
+# 编辑器
+.vscode/
+.idea/
+
+# 环境变量
+.env
+.env.local
+
+# Node.js（如果以后加后端依赖）
+node_modules/
+
+# 项目临时文件
+err.txt
+exit.txt
+out.txt
+port.txt
+status.txt
+test.txt
+*.lnk
